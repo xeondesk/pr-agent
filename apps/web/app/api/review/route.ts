@@ -1,4 +1,5 @@
-import { createSSEHeaders, fetchGitHubPR, createMockPRData, createReviewAgent, encodeSSE } from '../utils';
+import { createSSEHeaders, fetchGitHubPR, createMockPRData, createAIHandler, encodeSSE } from '../utils';
+import { executeTool } from '../../../lib/tools';
 
 export async function POST(request: Request) {
   try {
@@ -36,17 +37,17 @@ export async function POST(request: Request) {
       prData = createMockPRData(diff || '', prUrl || 'local-diff');
     }
 
-    const agent = createReviewAgent();
+    const aiHandler = createAIHandler();
 
     const responseStream = new ReadableStream({
       async start(controller) {
         try {
           const encoder = new TextEncoder();
-          const stream = await agent.executeStream({
+          const stream = executeTool('review', {
             prData,
-            toolName: 'review',
-            userQuery,
-          });
+            context: userQuery || '',
+            userQuery: userQuery || '',
+          }, aiHandler);
           
           for await (const chunk of stream) {
             controller.enqueue(encoder.encode(encodeSSE(chunk)));

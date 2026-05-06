@@ -1,5 +1,5 @@
-import type { PRData, PullFile } from '../../lib/prAgent';
-import { OpenAIHandler, ReviewAgent } from '../../lib/prAgent';
+import type { PRData, PullFile } from '../../lib/types';
+import { OpenAIHandler } from '../../lib/aiHandler';
 
 export function createSSEHeaders() {
   return {
@@ -75,20 +75,18 @@ export function createMockPRData(diff: string, url: string): PRData {
   };
 }
 
-export function createReviewAgent(): ReviewAgent {
+export function createAIHandler(): OpenAIHandler {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not set');
   }
 
-  const aiHandler = new OpenAIHandler({
+  return new OpenAIHandler({
     apiKey,
     model: 'gpt-4',
     temperature: 0.7,
     maxTokens: 2048,
   });
-
-  return new ReviewAgent(aiHandler);
 }
 
 export function encodeSSE(data: string): string {
