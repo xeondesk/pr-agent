@@ -17,7 +17,12 @@
       "@pr-agent/types": ["packages/types/src/index.ts"],
       "@pr-agent/core": ["packages/core/src/index.ts"],
       "@pr-agent/tools": ["packages/tools/src/index.ts"],
-      "@pr-agent/agents": ["packages/agents/src/index.ts"]
+      "@pr-agent/agents": ["packages/agents/src/index.ts"],
+      "@pr-agent/capability-types": ["packages/capability-types/src/index.ts"],
+      "@pr-agent/capability-sdk": ["packages/capability-sdk/src/index.ts"],
+      "@pr-agent/capability-registry": ["packages/capability-registry/src/index.ts"],
+      "@pr-agent/capability-runtime": ["packages/capability-runtime/src/index.ts"],
+      "@pr-agent/capability-cli": ["packages/capability-cli/src/index.ts"]
     }
   },
   "include": ["packages", "apps"],

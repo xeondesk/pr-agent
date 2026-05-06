@@ -12,9 +12,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@pr-agent/types": "workspace:*",
     "@pr-agent/core": "workspace:*",
-    "@pr-agent/tools": "workspace:*"
+    "@pr-agent/tools": "workspace:*",
+    "@pr-agent/types": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
