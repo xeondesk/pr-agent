@@ -19,6 +19,9 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.3",
+    "@types/bull": "^4.10.4",
+    "bull": "^4.16.5",
     "js-tiktoken": "^1.0.21"
   }
 }

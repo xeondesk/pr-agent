@@ -12,7 +12,7 @@ export class OpenAIHandler {
     this.config = config;
   }
 
-  async *streamCompletion(prompt: string): AsyncGenerator<string> {
+  async complete(prompt: string, systemPrompt?: string): Promise<string> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -24,8 +24,37 @@ export class OpenAIHandler {
         messages: [
           {
             role: 'system',
-            content:
-              'You are an expert code reviewer. Provide clear, actionable feedback on pull requests.',
+            content: systemPrompt || 'You are an expert code reviewer. Provide clear, actionable feedback on pull requests.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        temperature: this.config.temperature,
+        max_tokens: this.config.maxTokens,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json() as any;
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  async *streamCompletion(prompt: string, systemPrompt?: string): AsyncGenerator<string> {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt || 'You are an expert code reviewer. Provide clear, actionable feedback on pull requests.',
           },
           { role: 'user', content: prompt },
         ],

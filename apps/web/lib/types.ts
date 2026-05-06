@@ -44,3 +44,21 @@ export interface AgentOutput {
   content: string;
   tokensUsed: number;
 }
+
+export interface WebhookStatus {
+  eventId: string;
+  repoFullName: string;
+  prNumber: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  tools: string[];
+  results?: Record<string, string>;
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface CapabilityInput {
+  prData: PRData;
+  userQuery?: string;
+  context?: Record<string, any>;
+}
