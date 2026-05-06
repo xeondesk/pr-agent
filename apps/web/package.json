@@ -1,0 +1,27 @@
+{
+  "name": "@pr-agent/web",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pr-agent/types": "workspace:*",
+    "@pr-agent/core": "workspace:*",
+    "@pr-agent/tools": "workspace:*",
+    "@pr-agent/agents": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.3.0"
+  }
+}
