@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       } else {
         prData = createMockPRData(diff || '', prUrl || 'local-diff');
       }
-    } catch (error) {
+    } catch {
       prData = createMockPRData(diff || '', prUrl || 'local-diff');
     }
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
           
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
-        } catch (error) {
+    } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
           controller.enqueue(
             new TextEncoder().encode(`data: Error: ${errorMsg}\n\n`)

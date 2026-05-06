@@ -28,7 +28,7 @@ Please provide:
 5. Recommendations for improvement`;
 }
 
-function generateDescribePrompt(prData: PRData, userQuery: string): string {
+function generateDescribePrompt(prData: PRData, _userQuery: string): string {
   return `Summarize this pull request's changes in a clear, concise way.
 
 Title: ${prData.title}
@@ -40,7 +40,7 @@ ${prData.files.map((f) => `- ${f.filename} (+${f.additions}/-${f.deletions})`).j
 Provide a brief summary of what was changed and why.`;
 }
 
-function generateImprovePrompt(prData: PRData, userQuery: string): string {
+function generateImprovePrompt(prData: PRData, _userQuery: string): string {
   return `Suggest improvements to this pull request's code.
 
 Title: ${prData.title}
