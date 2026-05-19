@@ -1,0 +1,26 @@
+{
+  "name": "@pr-agent/capability-cli",
+  "version": "1.0.0",
+  "description": "CLI for managing capabilities",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "capability": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pr-agent/capability-registry": "workspace:*",
+    "@pr-agent/capability-runtime": "workspace:*",
+    "@pr-agent/capability-sdk": "workspace:*",
+    "@pr-agent/capability-types": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
