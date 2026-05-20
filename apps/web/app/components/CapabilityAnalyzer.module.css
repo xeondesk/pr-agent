@@ -1,0 +1,203 @@
+.container {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: var(--spacing-xl);
+  height: calc(100vh - 150px);
+}
+
+.sidebar {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.sidebarSection {
+  margin-bottom: var(--spacing-xl);
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--spacing-md);
+}
+
+.capabilityGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+}
+
+.capabilityCard {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-background-tertiary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.capabilityCard:hover {
+  border-color: var(--color-border-light);
+  background: var(--color-background);
+}
+
+.capabilityCard.active {
+  border-color: var(--color-accent-primary);
+  background: rgba(0, 112, 243, 0.05);
+}
+
+.capabilityCard.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-accent-primary);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.capabilityLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+}
+
+.capabilityIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.capabilityDesc {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.actionButton {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: auto;
+}
+
+.actionButton:hover {
+  background: var(--color-accent-primary-hover);
+}
+
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mainContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  overflow-y: auto;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.resultCard {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.resultHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background-tertiary);
+}
+
+.resultIcon {
+  font-size: 24px;
+}
+
+.resultTitle {
+  flex: 1;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.resultStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.resultContent {
+  padding: var(--spacing-lg);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.resultContent p {
+  margin-bottom: var(--spacing-md);
+}
+
+.resultContent code {
+  background: var(--color-background-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--color-accent-primary);
+}
+
+.loadingCard {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.loadingSpinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorMessage {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  color: var(--color-error);
+  font-weight: 500;
+}

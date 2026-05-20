@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import styles from './PRInput.module.css';
 
 interface PRInputProps {
   onSubmit: (prUrl: string, diff: string) => void;
@@ -21,30 +22,37 @@ export function PRInput({ onSubmit }: PRInputProps) {
   };
 
   return (
-    <div className="space-y-2">
-      <input
-        type="text"
-        placeholder="GitHub PR URL or repo link..."
-        value={prUrl}
-        onChange={(e) => setPrUrl(e.target.value)}
-        onFocus={() => setIsExpanded(true)}
-        className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
-      />
+    <div className={styles.container}>
+      <div className={styles.inputGroup}>
+        <label className={styles.label}>GitHub PR URL</label>
+        <div className={styles.inputWrapper}>
+          <span className={styles.icon}>🔗</span>
+          <input
+            type="text"
+            placeholder="https://github.com/owner/repo/pull/123"
+            value={prUrl}
+            onChange={(e) => setPrUrl(e.target.value)}
+            onFocus={() => setIsExpanded(true)}
+            className={styles.input}
+          />
+        </div>
+      </div>
 
       {isExpanded && (
-        <div className="space-y-2 fade-in">
-          <textarea
-            placeholder="Or paste the diff here..."
-            value={diff}
-            onChange={(e) => setDiff(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 font-mono text-xs h-24 resize-none"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleSubmit}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded transition-colors"
-            >
-              Analyze
+        <div className={`${styles.expandedSection} fade-in`}>
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Or paste diff (optional)</label>
+            <textarea
+              placeholder="Paste your git diff or code changes here..."
+              value={diff}
+              onChange={(e) => setDiff(e.target.value)}
+              className={styles.textarea}
+            />
+          </div>
+
+          <div className={styles.actions}>
+            <button onClick={handleSubmit} className="btn-primary">
+              <span>⚡</span> Analyze PR
             </button>
             <button
               onClick={() => {
@@ -52,7 +60,7 @@ export function PRInput({ onSubmit }: PRInputProps) {
                 setPrUrl('');
                 setDiff('');
               }}
-              className="flex-1 bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded transition-colors"
+              className="btn-secondary"
             >
               Cancel
             </button>
