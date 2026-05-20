@@ -9,6 +9,12 @@ nav:
   - Installation:
     - 'installation/index.md'
     - PR-Agent: 'installation/pr_agent.md'
+    - Local Setup: 'installation/locally.md'
+    - GitHub: 'installation/github.md'
+    - GitLab: 'installation/gitlab.md'
+    - Bitbucket: 'installation/bitbucket.md'
+    - Azure DevOps: 'installation/azure.md'
+    - Gitea: 'installation/gitea.md'
   - Usage Guide:
     - 'usage-guide/index.md'
     - Introduction: 'usage-guide/introduction.md'
@@ -38,7 +44,12 @@ nav:
       - Interactivity: 'core-abilities/interactivity.md'
       - Local and global metadata: 'core-abilities/metadata.md'
       - Self-reflection: 'core-abilities/self_reflection.md'
-#  - Code Fine-tuning Benchmark: 'finetuning_benchmark/index.md'
+  - Web Platform:
+      - 'web-platform/index.md'
+      - Getting Started: 'web-platform/getting_started.md'
+      - API Routes: 'web-platform/api_routes.md'
+      - GitHub App: 'web-platform/github_app.md'
+      - Deployment: 'web-platform/deployment.md'
 
 theme:
   logo: assets/favicon.svg
