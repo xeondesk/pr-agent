@@ -48,6 +48,7 @@ nav:
       - 'web-platform/index.md'
       - Getting Started: 'web-platform/getting_started.md'
       - API Routes: 'web-platform/api_routes.md'
+      - GitHub App: 'web-platform/github_app.md'
       - Deployment: 'web-platform/deployment.md'
 
 theme:

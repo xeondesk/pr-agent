@@ -7,9 +7,11 @@ The PR-Agent Web Platform is a modern, browser-based interface for AI-powered pu
 - **Real-time streaming** — Server-Sent Events (SSE) deliver AI responses as they're generated
 - **Multiple analysis tools** — Review, Describe, Improve, and Ask, all accessible from a single interface
 - **GitHub PR integration** — Fetch and analyze any public GitHub pull request by URL
+- **GitHub App support** — Install as a GitHub App for automated PR analysis via webhooks
 - **Raw diff support** — Paste any git diff directly for analysis
 - **Monorepo architecture** — Modular TypeScript packages for core, tools, agents, and types
 - **Vercel-ready** — Deploy to production in minutes
+- **SSE streaming** — Real-time AI response streaming via Server-Sent Events
 
 ## Technology Stack
 

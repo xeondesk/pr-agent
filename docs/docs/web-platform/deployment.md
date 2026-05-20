@@ -29,9 +29,17 @@ When configuring manually, use:
 
 ### Environment Variables
 
-| Variable           | Required | Description               |
-|--------------------|----------|---------------------------|
-| `OPENAI_API_KEY`   | Yes      | OpenAI API key for GPT-4  |
+| Variable                  | Required | Description                         |
+|---------------------------|----------|-------------------------------------|
+| `OPENAI_API_KEY`          | Yes      | OpenAI API key for GPT-4            |
+| `GITHUB_WEBHOOK_SECRET`   | No       | Secret for verifying webhook payloads |
+| `GITHUB_DEPLOYMENT_TYPE`  | No       | Set to `app` to use GitHub App auth |
+| `GITHUB_APP_ID`           | No*      | GitHub App ID (required when type=app) |
+| `GITHUB_PRIVATE_KEY`      | No*      | GitHub App private key (required when type=app) |
+| `GITHUB_INSTALLATION_ID`  | No*      | GitHub App installation ID (required when type=app) |
+| `NEXT_PUBLIC_APP_URL`     | No       | Public URL of your deployment       |
+
+*Required only when `GITHUB_DEPLOYMENT_TYPE=app`.
 
 ## Other Hosting
 
