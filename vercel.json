@@ -1,0 +1,31 @@
+{
+  "buildCommand": "cd apps/web && pnpm build",
+  "outputDirectory": "apps/web/.next",
+  "env": [
+    "OPENAI_API_KEY",
+    "GITHUB_TOKEN",
+    "GITHUB_WEBHOOK_SECRET",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "REDIS_URL",
+    "NEXT_PUBLIC_APP_URL"
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/analyze",
+      "permanent": false
+    }
+  ]
+}
