@@ -158,6 +158,9 @@ export function processPatchLines(
 
           isValidHunk = checkIfHunkLinesMatchesToFile(i, fileOriginalLines, patchLines, start1);
 
+          let extendedStart1: number, extendedSize1: number, extendedStart2: number, extendedSize2: number;
+          let deltaLinesOriginal: string[] = [];
+
           if (isValidHunk && (patchExtraLinesBefore > 0 || patchExtraLinesAfter > 0)) {
             const calcContextLimits = (patchLinesBefore: number) => {
               let extStart1 = Math.max(1, start1 - patchLinesBefore);
@@ -171,9 +174,6 @@ export function processPatchLines(
               }
               return { extendedStart1: extStart1, extendedSize1: extSize1, extendedStart2: extStart2, extendedSize2: extSize2 };
             };
-
-            let extendedStart1: number, extendedSize1: number, extendedStart2: number, extendedSize2: number;
-            let deltaLinesOriginal: string[];
 
             if (allowDynamicContext && fileNewLines.length > 0) {
               ({ extendedStart1, extendedSize1, extendedStart2, extendedSize2 } = calcContextLimits(patchExtraLinesBeforeDynamic));

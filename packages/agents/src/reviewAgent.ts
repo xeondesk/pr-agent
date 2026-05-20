@@ -1,7 +1,6 @@
 import { BaseAgent } from './baseAgent.js';
 import type { PRData, AgentInput, AgentOutput } from '@pr-agent/types';
-import { ToolRegistry } from '@pr-agent/tools';
-import { ReviewTool, DescribeTool, ImproveTool, AskTool } from '@pr-agent/tools';
+import { ToolRegistry, BaseTool } from '@pr-agent/tools';
 import type { AIHandler } from '@pr-agent/core';
 
 export class ReviewAgent extends BaseAgent {
@@ -10,14 +9,6 @@ export class ReviewAgent extends BaseAgent {
   constructor(toolRegistry: ToolRegistry, aiHandler: AIHandler) {
     super('ReviewAgent', toolRegistry);
     this.aiHandler = aiHandler;
-    this.registerTools();
-  }
-
-  private registerTools(): void {
-    this.toolRegistry.register(new ReviewTool(this.aiHandler));
-    this.toolRegistry.register(new DescribeTool(this.aiHandler));
-    this.toolRegistry.register(new ImproveTool(this.aiHandler));
-    this.toolRegistry.register(new AskTool(this.aiHandler));
   }
 
   async execute(input: AgentInput): Promise<AgentOutput> {

@@ -62,6 +62,7 @@ export interface CapabilityContext {
   abortSignal: AbortSignal;
   run: RunFn;
   permissions: Readonly<CapabilityPermissions>;
+  requirePermission(permission: keyof CapabilityPermissions): void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

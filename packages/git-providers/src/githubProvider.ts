@@ -145,8 +145,8 @@ export class GithubProvider extends GitProvider {
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
       const err = new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-      (err as Record<string, unknown>).status = response.status;
-      (err as Record<string, unknown>).body = errorBody;
+      (err as unknown as Record<string, unknown>).status = response.status;
+      (err as unknown as Record<string, unknown>).body = errorBody;
       throw err;
     }
 
@@ -175,8 +175,8 @@ export class GithubProvider extends GitProvider {
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
       const err = new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-      (err as Record<string, unknown>).status = response.status;
-      (err as Record<string, unknown>).body = errorBody;
+      (err as unknown as Record<string, unknown>).status = response.status;
+      (err as unknown as Record<string, unknown>).body = errorBody;
       throw err;
     }
 
@@ -227,7 +227,7 @@ export class GithubProvider extends GitProvider {
     let schemeAndNetloc: string | null = null;
 
     if (repoGitUrl || this.issueMain) {
-      desiredBranch = desiredBranch || (this.issueMain as Record<string, unknown>)?.['repository']?.['default_branch'] as string;
+      desiredBranch = desiredBranch || ((this.issueMain as Record<string, unknown>)?.['repository'] as Record<string, unknown>)?.['default_branch'] as string;
       const htmlUrl = repoGitUrl || (this.issueMain as Record<string, unknown>)?.['html_url'] as string;
       if (htmlUrl) {
         const parsedUrl = new URL(htmlUrl);
@@ -245,7 +245,7 @@ export class GithubProvider extends GitProvider {
     if ((!owner || !repo) && this.repo) {
       [owner, repo] = this.repo.split('/');
       schemeAndNetloc = this.baseUrlHtml;
-      desiredBranch = (this.repoObj as Record<string, unknown>)?.['default_branch'] as string || desiredBranch;
+      desiredBranch = ((this.repoObj as Record<string, unknown>)?.['default_branch'] as string) || desiredBranch;
     }
 
     if (!schemeAndNetloc || !owner || !repo) {
@@ -306,7 +306,7 @@ export class GithubProvider extends GitProvider {
   }
 
   async getCommitRange(): Promise<GithubCommit[]> {
-    const lastReviewTime = (this as Record<string, unknown>)['previousReview']?.['created_at'] as string;
+    const lastReviewTime = ((this as Record<string, unknown>)['previousReview'] as Record<string, unknown>)?.['created_at'] as string;
     const lastReviewDate = new Date(lastReviewTime);
     let firstNewCommitIndex: number | null = null;
 

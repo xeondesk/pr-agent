@@ -840,6 +840,8 @@ export interface ConfigSettings {
     ignore_language_framework?: string[];
     is_auto_command?: boolean;
     enable_ai_metadata?: boolean;
+    enable_custom_labels?: boolean;
+    enable_auto_approval?: boolean;
     reasoning_effort?: string;
     enable_claude_extended_thinking?: boolean;
     extended_thinking_budget_tokens?: number;
@@ -860,6 +862,15 @@ export interface ConfigSettings {
   pr_improve_component?: ConfigPRImproveComponentSettings;
   pr_help?: ConfigPRHelpSettings;
   pr_config?: Record<string, unknown>;
+  pr_review_prompt?: {
+    system?: string;
+    user?: string;
+  };
+  pr_questions_prompt?: {
+    system?: string;
+    user?: string;
+  };
+  pr_description_only_files_prompts?: Record<string, unknown>;
   pr_help_docs?: ConfigPRHelpDocsSettings;
   pr_similar_issue?: ConfigPRSimilarIssueSettings;
   pr_find_similar_component?: ConfigPRFindSimilarComponentSettings;

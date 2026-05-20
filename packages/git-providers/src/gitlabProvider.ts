@@ -335,7 +335,7 @@ export class GitLabProvider extends GitProvider {
 
   async removeInitialComment(): Promise<void> {
     for (const comment of this.tempComments) {
-      await this.removeComment(comment);
+      await this.removeComment(comment as Record<string, unknown>);
     }
   }
 

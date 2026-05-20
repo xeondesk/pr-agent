@@ -483,8 +483,8 @@ export class ImproveTool {
 
     if (codeSuggestionsFeedback.length > 0 && codeSuggestionsFeedback.length === data.code_suggestions.length) {
       for (let i = 0; i < data.code_suggestions.length; i++) {
+        let suggestion = data.code_suggestions[i];
         try {
-          const suggestion = data.code_suggestions[i];
           suggestion.score = codeSuggestionsFeedback[i].suggestion_score;
           suggestion.score_why = codeSuggestionsFeedback[i].why;
 
@@ -565,7 +565,9 @@ export class ImproveTool {
         }
 
         if (suggestion.existing_code !== undefined && suggestion.improved_code !== undefined) {
-          suggestion = this.truncateIfNeeded(suggestion);
+          const truncated = this.truncateIfNeeded(suggestion);
+          suggestion.existing_code = truncated.existing_code;
+          suggestion.improved_code = truncated.improved_code;
           oneSentenceSummaryList.push(suggestion.one_sentence_summary);
           suggestionList.push(suggestion);
         } else {
@@ -583,8 +585,9 @@ export class ImproveTool {
   }
 
   private truncateIfNeeded(suggestion: any): any {
-    const maxLen = this.getSettings().pr_code_suggestions?.max_code_suggestion_length || 0;
-    const truncMsg = this.getSettings().pr_code_suggestions?.suggestion_truncation_message || '';
+    const settings = this.getSettings().pr_code_suggestions as any || {};
+    const maxLen = settings.max_code_suggestion_length || 0;
+    const truncMsg = settings.suggestion_truncation_message || '';
     if (maxLen > 0 && suggestion.improved_code?.length > maxLen) {
       console.log(
         `Truncated suggestion from ${suggestion.improved_code.length} to ${maxLen}`

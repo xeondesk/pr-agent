@@ -168,7 +168,7 @@ export abstract class GitProvider {
 
   abstract getFiles(): unknown[];
 
-  abstract getDiffFiles(): FilePatchInfo[];
+  abstract getDiffFiles(): Promise<FilePatchInfo[]> | FilePatchInfo[];
 
   getIncrementalCommits(_isIncremental: unknown): void {
     // optional
@@ -417,7 +417,11 @@ export abstract class GitProvider {
 
   getNumOfFiles(): number {
     try {
-      return this.getDiffFiles().length;
+      const diffFiles = this.getDiffFiles();
+      if (diffFiles instanceof Promise) {
+        return -1;
+      }
+      return diffFiles.length;
     } catch {
       return -1;
     }
