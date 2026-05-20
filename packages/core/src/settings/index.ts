@@ -1,0 +1,14 @@
+export { config } from './configuration.js';
+export type { ConfigType } from './configuration.js';
+export { ignore } from './ignore.js';
+export { generatedCodeIgnore } from './generatedCodeIgnore.js';
+export { languageExtensions } from './languageExtensions.js';
+export { prReviewerPrompts } from './prReviewerPrompts.js';
+export { prDescriptionPrompts } from './prDescriptionPrompts.js';
+export { prQuestionsPrompts } from './prQuestionsPrompts.js';
+export { prLineQuestionsPrompts } from './prLineQuestionsPrompts.js';
+export { prCodeSuggestionsPrompts } from './prCodeSuggestionsPrompts.js';
+export { prUpdateChangelogPrompts } from './prUpdateChangelogPrompts.js';
+export { prAddDocsPrompts } from './prAddDocsPrompts.js';
+export { prCustomLabels } from './prCustomLabels.js';
+export { prHelpPrompts } from './prHelpPrompts.js';

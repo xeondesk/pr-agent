@@ -11,6 +11,7 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
+    "jsx": "react-jsx",
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
@@ -22,7 +23,10 @@
       "@pr-agent/capability-sdk": ["packages/capability-sdk/src/index.ts"],
       "@pr-agent/capability-registry": ["packages/capability-registry/src/index.ts"],
       "@pr-agent/capability-runtime": ["packages/capability-runtime/src/index.ts"],
-      "@pr-agent/capability-cli": ["packages/capability-cli/src/index.ts"]
+      "@pr-agent/capability-cli": ["packages/capability-cli/src/index.ts"],
+      "@pr-agent/git-providers": ["packages/git-providers/src/index.ts"],
+      "@pr-agent/secret-providers": ["packages/secret-providers/src/index.ts"],
+      "@pr-agent/identity-providers": ["packages/identity-providers/src/index.ts"]
     }
   },
   "include": ["packages", "apps"],

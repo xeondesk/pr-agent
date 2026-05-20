@@ -210,10 +210,10 @@ describe("CapabilityExecutor", () => {
   });
 
   it("handles errors and emits error event", async () => {
-    const events = [];
+    const events: { type: string }[] = [];
     await expect(async () => {
       for await (const event of executor.execute("failing", {})) {
-        events.push(event);
+        events.push(event as { type: string });
       }
     }).rejects.toThrow("intentional failure");
 
@@ -325,12 +325,12 @@ describe("Capability Composition (ctx.run)", () => {
         const results: string[] = [];
         for await (const event of ctx.run("step-a", { value: input.value })) {
           if (event.type === "result") {
-            results.push(event.data.result);
+            results.push((event.data as { result: string }).result);
           }
         }
         for await (const event of ctx.run("step-b", { value: input.value })) {
           if (event.type === "result") {
-            results.push(event.data.result);
+            results.push((event.data as { result: string }).result);
           }
         }
 
@@ -347,7 +347,7 @@ describe("Capability Composition (ctx.run)", () => {
     });
 
     const result = await executor.executeToResult("pipeline", { value: "test" });
-    expect(result.output.results).toEqual(["a:test", "b:test"]);
+    expect((result.output as { results: string[] }).results).toEqual(["a:test", "b:test"]);
   });
 });
 

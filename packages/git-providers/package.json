@@ -1,0 +1,12 @@
+{
+  "name": "@pr-agent/git-providers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@pr-agent/types": "workspace:*",
+    "@pr-agent/core": "workspace:*"
+  }
+}
