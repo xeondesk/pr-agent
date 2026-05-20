@@ -525,6 +525,26 @@ For more detailed configuration options, see:
 
 Allowing you to automate the review process on your private or public repositories.
 
+### Option A: One-click setup (Web Platform)
+
+For the web platform, use the GitHub App manifest file included in the repository:
+
+1. Open the manifest URL (replace `APP_URL` with your deployed app URL):
+   ```
+   https://github.com/settings/apps/new?manifest_url=APP_URL/github-app-manifest.json
+   ```
+
+2. GitHub will create the app and redirect you to a page with the **App ID**, **App private key**, and a **webhook secret**.
+
+3. Run the setup script:
+   ```bash
+   bash scripts/setup-github-app.sh <app_id> /path/to/private-key.pem <webhook_secret> <installation_id>
+   ```
+
+4. Install the app on your repositories via the "Install App" tab in the GitHub App settings.
+
+### Option B: Manual Setup
+
 1) Create a GitHub App from the [Github Developer Portal](https://docs.github.com/en/developers/apps/creating-a-github-app).
 
    - Set the following permissions:

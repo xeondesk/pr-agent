@@ -1,0 +1,24 @@
+{
+  "name": "PR-Agent-Web",
+  "url": "https://pr-agent-ten.vercel.app",
+  "hook_attributes": {
+    "url": "https://pr-agent-ten.vercel.app/api/webhooks/github"
+  },
+  "callback_urls": [
+    "https://pr-agent-ten.vercel.app"
+  ],
+  "redirect_url": "https://pr-agent-ten.vercel.app",
+  "public": true,
+  "default_permissions": {
+    "pull_requests": "write",
+    "issues": "write",
+    "contents": "read",
+    "metadata": "read"
+  },
+  "default_events": [
+    "pull_request",
+    "issue_comment",
+    "push"
+  ],
+  "description": "AI-powered PR analysis and code review bot"
+}
