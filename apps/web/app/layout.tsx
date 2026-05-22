@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import React from 'react';
+import { Sidebar } from './components/Sidebar';
+import { Navbar } from './components/Navbar';
 
 export const metadata: Metadata = {
-  title: 'PR-Agent Web',
-  description: 'AI-powered pull request analysis platform',
+  title: 'CodeReview - AI PR Analysis Platform',
+  description: 'Intelligent pull request analysis and code review platform powered by AI',
 };
 
 export default function RootLayout({
@@ -14,8 +16,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 min-h-screen">
-        {children}
+      <body className="min-h-screen bg-background text-text-primary">
+        <div className="flex">
+          <Sidebar />
+          <div className="flex-1 flex flex-col md:ml-0">
+            <Navbar />
+            <main className="flex-1 overflow-auto bg-background">
+              {children}
+            </main>
+          </div>
+        </div>
       </body>
     </html>
   );
