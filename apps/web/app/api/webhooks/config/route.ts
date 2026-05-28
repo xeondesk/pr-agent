@@ -1,130 +1,130 @@
-import { generateWebhookSecret } from '../../../../lib/webhooks';
+import { NextResponse, type NextRequest } from 'next/server';
+import { webhookConfigRequestSchema, type WebhookConfigRequest } from '@/lib/api/schemas';
+import { generateWebhookSecret } from '@/lib/webhooks';
+import { getSupabaseClient } from '@/lib/db';
+import { ApiError, NotFoundError, handleApiError } from '@/lib/api/errors';
+import { verifySession } from '@/lib/auth/server';
+import { withAuth } from '@/lib/api/middleware';
+import type { ApiRequest } from '@/lib/api/types';
 
-// In production, store in database
-const webhookConfigs = new Map<string, any>();
+async function createHandler(req: ApiRequest<WebhookConfigRequest>) {
+  const { repoFullName, autoReview, autoDescribe, autoImprove, postComments } = req.body;
 
-export async function POST(request: Request) {
-  try {
-    const { repoFullName, autoReview, autoDescribe, autoImprove, postComments } =
-      await request.json();
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new ApiError('DB_UNAVAILABLE', 'Database not configured', 503);
 
-    if (!repoFullName) {
-      return new Response(JSON.stringify({ error: 'Missing repoFullName' }), {
-        status: 400,
-      });
-    }
+  const { data: existing } = await supabase
+    .from('webhook_configs')
+    .select('id')
+    .eq('repo_full_name', repoFullName)
+    .maybeSingle();
 
-    // Check if config already exists
-    let config = webhookConfigs.get(repoFullName);
+  if (existing) {
+    const { data, error } = await supabase
+      .from('webhook_configs')
+      .update({
+        auto_review: autoReview,
+        auto_describe: autoDescribe,
+        auto_improve: autoImprove,
+        post_comments: postComments,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
 
-    if (!config) {
-      const secret = generateWebhookSecret();
-      config = {
-        id: `wh_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        repoFullName,
-        secret,
-        webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhooks/github`,
-        enabled: true,
-        createdAt: new Date(),
-      };
-      webhookConfigs.set(repoFullName, config);
-    }
-
-    // Update settings
-    config.autoReview = autoReview ?? config.autoReview ?? true;
-    config.autoDescribe = autoDescribe ?? config.autoDescribe ?? true;
-    config.autoImprove = autoImprove ?? config.autoImprove ?? false;
-    config.postComments = postComments ?? config.postComments ?? true;
-    config.updatedAt = new Date();
-
-    return new Response(
-      JSON.stringify({
-        id: config.id,
-        repoFullName: config.repoFullName,
-        webhookUrl: config.webhookUrl,
-        secret: config.secret,
-        enabled: config.enabled,
-        autoReview: config.autoReview,
-        autoDescribe: config.autoDescribe,
-        autoImprove: config.autoImprove,
-        postComments: config.postComments,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
-    );
+    if (error) throw new ApiError('DB_ERROR', 'Failed to update webhook config', 500);
+    return NextResponse.json(data);
   }
+
+  const secret = generateWebhookSecret();
+  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhooks/github`;
+
+  const { data, error } = await supabase
+    .from('webhook_configs')
+    .insert({
+      user_id: req.userId,
+      repo_full_name: repoFullName,
+      webhook_secret: secret,
+      webhook_url: webhookUrl,
+      enabled: true,
+      auto_review: autoReview,
+      auto_describe: autoDescribe,
+      auto_improve: autoImprove,
+      post_comments: postComments,
+    })
+    .select()
+    .single();
+
+  if (error) throw new ApiError('DB_ERROR', 'Failed to create webhook config', 500);
+
+  return NextResponse.json(data, { status: 201 });
 }
 
-export async function GET(request: Request) {
+async function handleGet(request: NextRequest) {
   try {
+    const user = await verifySession(request.headers.get('authorization')?.slice(7) || '');
+    if (!user) {
+      return NextResponse.json({ status: 'error', error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const repoFullName = searchParams.get('repo');
 
     if (!repoFullName) {
-      return new Response(JSON.stringify({ error: 'Missing repo parameter' }), {
-        status: 400,
-      });
+      return NextResponse.json({ status: 'error', error: { code: 'VALIDATION_ERROR', message: 'Missing repo parameter' } }, { status: 400 });
     }
 
-    const config = webhookConfigs.get(repoFullName);
+    const supabase = getSupabaseClient();
+    if (!supabase) throw new ApiError('DB_UNAVAILABLE', 'Database not configured', 503);
 
-    if (!config) {
-      return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
-        status: 404,
-      });
-    }
+    const { data, error } = await supabase
+      .from('webhook_configs')
+      .select('*')
+      .eq('repo_full_name', repoFullName)
+      .eq('user_id', user.id)
+      .single();
 
-    return new Response(
-      JSON.stringify({
-        id: config.id,
-        repoFullName: config.repoFullName,
-        webhookUrl: config.webhookUrl,
-        enabled: config.enabled,
-        autoReview: config.autoReview,
-        autoDescribe: config.autoDescribe,
-        autoImprove: config.autoImprove,
-        postComments: config.postComments,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    if (error || !data) throw new NotFoundError('Webhook config', repoFullName);
+
+    const { webhook_secret: _secret, ...safe } = data;
+    return NextResponse.json(safe);
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
-export async function DELETE(request: Request) {
+async function handleDelete(request: NextRequest) {
   try {
+    const user = await verifySession(request.headers.get('authorization')?.slice(7) || '');
+    if (!user) {
+      return NextResponse.json({ status: 'error', error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const repoFullName = searchParams.get('repo');
 
     if (!repoFullName) {
-      return new Response(JSON.stringify({ error: 'Missing repo parameter' }), {
-        status: 400,
-      });
+      return NextResponse.json({ status: 'error', error: { code: 'VALIDATION_ERROR', message: 'Missing repo parameter' } }, { status: 400 });
     }
 
-    webhookConfigs.delete(repoFullName);
+    const supabase = getSupabaseClient();
+    if (!supabase) throw new ApiError('DB_UNAVAILABLE', 'Database not configured', 503);
 
-    return new Response(JSON.stringify({ message: 'Webhook disabled' }), {
-      status: 200,
-    });
+    const { error } = await supabase
+      .from('webhook_configs')
+      .update({ enabled: false, updated_at: new Date().toISOString() })
+      .eq('repo_full_name', repoFullName)
+      .eq('user_id', user.id);
+
+    if (error) throw new ApiError('DB_ERROR', 'Failed to disable webhook', 500);
+
+    return NextResponse.json({ message: 'Webhook disabled' });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
+
+export const POST = withAuth(webhookConfigRequestSchema, createHandler);
+export const GET = handleGet;
+export const DELETE = handleDelete;
