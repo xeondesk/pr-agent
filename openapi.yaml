@@ -1,0 +1,417 @@
+openapi: 3.1.0
+info:
+  title: PR-Agent API
+  description: AI-powered GitHub PR analysis and review system
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@pr-agent.dev
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.pr-agent.dev
+    description: Production server
+  - url: http://localhost:3000
+    description: Development server
+
+paths:
+  /api/health:
+    get:
+      summary: Health check endpoint
+      description: Check if the application is running and healthy
+      tags:
+        - System
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: number
+                    description: Uptime in seconds
+
+  /api/ask:
+    post:
+      summary: Ask PR-Agent for analysis
+      description: Submit a GitHub PR for analysis and get AI-powered recommendations
+      tags:
+        - Analysis
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prUrl:
+                  type: string
+                  description: GitHub PR URL
+                  example: https://github.com/owner/repo/pull/123
+                analysisType:
+                  type: string
+                  enum: [full, quick, security]
+                  description: Type of analysis to perform
+                includeComments:
+                  type: boolean
+                  description: Include detailed comments
+                maxTokens:
+                  type: integer
+                  description: Maximum tokens for response
+                  default: 2000
+              required:
+                - prUrl
+      responses:
+        '200':
+          description: Analysis completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                  analysis:
+                    type: object
+                    properties:
+                      summary:
+                        type: string
+                      improvements:
+                        type: array
+                        items:
+                          type: string
+                      risks:
+                        type: array
+                        items:
+                          type: string
+                      score:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Analysis failed
+
+  /api/review:
+    post:
+      summary: Request a detailed PR review
+      description: Get a comprehensive review of a GitHub PR
+      tags:
+        - Review
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prUrl:
+                  type: string
+                owner:
+                  type: string
+                repo:
+                  type: string
+                prNumber:
+                  type: integer
+                focusAreas:
+                  type: array
+                  items:
+                    type: string
+                  description: Areas to focus on (e.g., security, performance, testing)
+              required:
+                - prUrl
+      responses:
+        '200':
+          description: Review completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviewId:
+                    type: string
+                  review:
+                    type: object
+                    properties:
+                      codeQuality:
+                        type: number
+                      testCoverage:
+                        type: number
+                      security:
+                        type: number
+                      performance:
+                        type: number
+                      comments:
+                        type: array
+                        items:
+                          type: object
+
+  /api/conversations:
+    get:
+      summary: List conversations
+      description: Get list of analysis conversations for current user
+      tags:
+        - Conversations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  total:
+                    type: integer
+    post:
+      summary: Create new conversation
+      description: Start a new PR analysis conversation
+      tags:
+        - Conversations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                prUrl:
+                  type: string
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /api/auth/profile:
+    get:
+      summary: Get user profile
+      description: Retrieve authenticated user's profile information
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Not authenticated
+
+    put:
+      summary: Update user profile
+      description: Update authenticated user's profile
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                preferences:
+                  type: object
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /api/metrics:
+    get:
+      summary: Get application metrics
+      description: Get real-time metrics for monitoring (admin only)
+      tags:
+        - Monitoring
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, prometheus]
+            default: json
+      responses:
+        '200':
+          description: Current metrics
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+
+  /api/webhooks/github:
+    post:
+      summary: GitHub webhook endpoint
+      description: Receive GitHub webhook events
+      tags:
+        - Webhooks
+      parameters:
+        - name: X-GitHub-Event
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-GitHub-Delivery
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-GitHub-Hook-ID
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook processed
+        '400':
+          description: Invalid webhook
+        '401':
+          description: Invalid signature
+        '429':
+          description: Rate limited
+
+components:
+  schemas:
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        prUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            type: object
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        emailVerified:
+          type: boolean
+        role:
+          type: string
+          enum: [user, admin]
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service authentication
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Analysis
+    description: PR analysis endpoints
+  - name: Review
+    description: PR review endpoints
+  - name: Conversations
+    description: Conversation management
+  - name: Authentication
+    description: User authentication and profile
+  - name: Monitoring
+    description: Monitoring and metrics endpoints
+  - name: Webhooks
+    description: External webhook integrations
