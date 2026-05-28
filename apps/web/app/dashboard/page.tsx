@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Code2, AlertCircle, Users, GitBranch, ShieldCheck, Sparkles } from 'lucide-react';
+import { ProtectedRoute } from '@/app/components/ProtectedRoute';
 
 const KEY_METRICS = [
   {
@@ -91,7 +92,8 @@ function ChartCard({ title, children }: any) {
 
 export default function Dashboard() {
   return (
-    <div className="p-8 space-y-8">
+    <ProtectedRoute>
+      <div className="p-8 space-y-8">
       <div className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
         <div className="card p-8 space-y-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -234,6 +236,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
