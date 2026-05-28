@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (!timestampVerification.valid) {
       logger.warn('Invalid webhook timestamp', { deliveryId, error: timestampVerification.error });
       return formatErrorResponse(
-        ERROR_CODES.INVALID_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
         'Webhook timestamp invalid',
         400,
         undefined,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       });
       return formatErrorResponse(
         ERROR_CODES.VALIDATION_ERROR,
-        eventValidation.error,
+        eventValidation.error || 'Invalid event data',
         400,
         undefined,
         deliveryId

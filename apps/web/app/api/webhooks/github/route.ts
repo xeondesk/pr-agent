@@ -4,8 +4,8 @@ import { WebhookHandler } from '../../../../lib/webhookHandler';
 import type { GitHubWebhookPayload } from '../../../../lib/webhooks';
 import { formatErrorResponse, ERROR_CODES, logger } from '@/lib/errors';
 import { webhookRateLimit } from '@/lib/middleware/rateLimit';
+import { webhookConfigs } from '@/lib/webhookConfigStore';
 
-export const webhookConfigs = new Map<string, any>();
 const webhookEvents = new Map<string, any>();
 
 export async function POST(request: NextRequest) {

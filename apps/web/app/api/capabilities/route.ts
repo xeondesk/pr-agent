@@ -40,14 +40,14 @@ export async function POST(request: NextRequest) {
         updatedAt: partialData.updatedAt || new Date().toISOString(),
       };
     } else {
-      prData = createMockPRData(diff, 'local');
+      prData = createMockPRData(diff || '', 'local');
     }
 
     const aiHandler = createAIHandler();
     const registry = createCapabilityRegistry(aiHandler);
-    const capabilityList = Array.isArray(capabilities_list) ? capabilities_list : [capabilities_list];
+    const capabilityList = (Array.isArray(capabilities_list) ? capabilities_list : [capabilities_list]).filter((c): c is string => !!c);
 
-    const validCapabilities = capabilityList.filter((c: string) => registry.get(c));
+    const validCapabilities = capabilityList.filter((c) => registry.get(c));
     if (validCapabilities.length === 0) {
       return formatErrorResponse(
         'NO_VALID_CAPABILITIES',

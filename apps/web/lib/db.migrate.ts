@@ -258,12 +258,15 @@ export async function runMigrations(): Promise<MigrationResult[]> {
   for (const migration of MIGRATIONS) {
     const startTime = Date.now();
     try {
-      const { error } = await supabase.rpc('execute_sql', {
-        sql_query: migration.sql
-      }).catch(() => {
+      let { error } = { error: null as any };
+      try {
+        ({ error } = await supabase.rpc('execute_sql', {
+          sql_query: migration.sql
+        }));
+      } catch {
         // Fallback if RPC not available
-        return { error: null };
-      });
+        error = null;
+      }
 
       const duration = Date.now() - startTime;
 

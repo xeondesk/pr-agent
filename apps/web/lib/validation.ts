@@ -31,7 +31,7 @@ export const CreateApiKeySchema = z.object({
 export const CreateConversationSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   pr_url: z.string().url().optional(),
-  pr_data: z.record(z.unknown()).optional(),
+  pr_data: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const UpdateConversationSchema = z.object({
@@ -48,7 +48,7 @@ export const CreateMessageSchema = z.object({
   conversation_id: UUIDSchema,
   content: z.string().min(1, 'Message content is required').max(10000, 'Message is too long'),
   capability: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const FeedbackSchema = z.object({
@@ -92,6 +92,7 @@ export const ReviewRequestSchema = z.object({
   pr_url: z.string().url('Invalid PR URL').optional(),
   diff: z.string().max(5000000, 'Diff is too large').optional(),
   conversation_id: UUIDSchema.optional(),
+  user_query: z.string().optional(),
 });
 
 export const DescribeRequestSchema = z.object({
@@ -104,6 +105,7 @@ export const ImproveRequestSchema = z.object({
   pr_url: z.string().url('Invalid PR URL').optional(),
   diff: z.string().max(5000000, 'Diff is too large').optional(),
   conversation_id: UUIDSchema.optional(),
+  user_query: z.string().optional(),
 });
 
 export const AgentsRequestSchema = z.object({
@@ -175,7 +177,7 @@ export const ApiErrorSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
-    details: z.record(z.unknown()).optional(),
+    details: z.record(z.string(), z.unknown()).optional(),
   }),
   requestId: z.string().optional(),
 });
