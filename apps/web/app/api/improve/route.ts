@@ -1,24 +1,34 @@
-import { createSSEHeaders, fetchGitHubPR, createMockPRData, createAIHandler, encodeSSE } from '../utils';
+import { NextRequest } from 'next/server';
+import { fetchGitHubPR, createMockPRData, createAIHandler, encodeSSE } from '../utils';
 import { executeTool } from '../../../lib/tools';
+import { ImproveRequestSchema } from '@/lib/validation';
+import { parseRequestBody, formatErrorResponse, ERROR_CODES, logger } from '@/lib/errors';
+import { rateLimitMiddleware, addRateLimitHeaders } from '@/lib/middleware/rateLimit';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+
   try {
-    const { prUrl, diff, userQuery } = await request.json() as {
-      prUrl?: string;
-      diff?: string;
-      userQuery?: string;
-    };
+    const rateLimitResponse = rateLimitMiddleware(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
-    if (!prUrl && !diff) {
-      return new Response('PR URL or diff required', { status: 400 });
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401, undefined, requestId);
     }
+
+    const parseResult = await parseRequestBody(request, ImproveRequestSchema);
+    if (!parseResult.success) return parseResult.error;
+
+    const { pr_url, diff, user_query } = parseResult.data;
 
     let prData;
     try {
-      if (prUrl?.includes('github.com')) {
-        const githubData = await fetchGitHubPR(prUrl);
+      if (pr_url) {
+        const githubData = await fetchGitHubPR(pr_url);
         prData = {
-          url: prUrl,
+          url: pr_url,
           title: githubData.title || 'PR',
           description: githubData.description || '',
           diff: githubData.diff || diff || '',
@@ -30,10 +40,10 @@ export async function POST(request: Request) {
           updatedAt: githubData.updatedAt || new Date().toISOString(),
         };
       } else {
-        prData = createMockPRData(diff || '', prUrl || 'local-diff');
+        prData = createMockPRData(diff || '', 'local');
       }
     } catch {
-      prData = createMockPRData(diff || '', prUrl || 'local-diff');
+      prData = createMockPRData(diff || '', pr_url || 'local-diff');
     }
 
     const aiHandler = createAIHandler();
@@ -44,17 +54,17 @@ export async function POST(request: Request) {
           const encoder = new TextEncoder();
           const stream = executeTool('improve', {
             prData,
-            context: userQuery || '',
-            userQuery: userQuery || '',
+            context: user_query || '',
+            userQuery: user_query || '',
           }, aiHandler);
-          
+
           for await (const chunk of stream) {
             controller.enqueue(encoder.encode(encodeSSE(chunk)));
           }
-          
+
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
-    } catch (error) {
+        } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
           controller.enqueue(
             new TextEncoder().encode(`data: Error: ${errorMsg}\n\n`)
@@ -64,11 +74,21 @@ export async function POST(request: Request) {
       },
     });
 
-    return new Response(responseStream, {
-      headers: createSSEHeaders(),
-    });
+    return addRateLimitHeaders(new Response(responseStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    }), request, '/api/improve');
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(`Error: ${errorMsg}`, { status: 500 });
+    logger.error('Improve API error', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500,
+      undefined,
+      requestId
+    );
   }
 }

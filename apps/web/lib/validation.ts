@@ -106,6 +106,19 @@ export const ImproveRequestSchema = z.object({
   conversation_id: UUIDSchema.optional(),
 });
 
+export const AgentsRequestSchema = z.object({
+  pr_url: z.string().url().optional(),
+  diff: z.string().max(5000000, 'Diff is too large').optional(),
+  mode: z.enum(['all', 'high', 'medium', 'low']).optional().default('all'),
+});
+
+export const CapabilitiesRequestSchema = z.object({
+  pr_url: z.string().url().optional(),
+  diff: z.string().max(5000000, 'Diff is too large').optional(),
+  capabilities_list: z.array(z.string()).optional(),
+  user_query: z.string().optional(),
+});
+
 // Webhook Event Schemas
 export const WebhookPayloadSchema = z.object({
   action: z.string(),

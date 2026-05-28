@@ -1,53 +1,55 @@
+import { NextRequest } from 'next/server';
 import { generateWebhookSecret } from '../../../../lib/webhooks';
+import { WebhookConfigPayloadSchema } from '@/lib/validation';
+import { parseRequestBody, formatErrorResponse, ERROR_CODES, logger } from '@/lib/errors';
 
-// In production, store in database
 const webhookConfigs = new Map<string, any>();
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { repoFullName, autoReview, autoDescribe, autoImprove, postComments } =
-      await request.json();
-
-    if (!repoFullName) {
-      return new Response(JSON.stringify({ error: 'Missing repoFullName' }), {
-        status: 400,
-      });
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401);
     }
 
-    // Check if config already exists
-    let config = webhookConfigs.get(repoFullName);
+    const parseResult = await parseRequestBody(request, WebhookConfigPayloadSchema);
+    if (!parseResult.success) return parseResult.error;
+
+    const { repo_full_name, auto_review, auto_describe, auto_improve, post_comments } = parseResult.data;
+
+    let config = webhookConfigs.get(repo_full_name);
 
     if (!config) {
       const secret = generateWebhookSecret();
       config = {
         id: `wh_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        repoFullName,
+        repo_full_name,
         secret,
-        webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhooks/github`,
+        webhook_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhooks/github`,
         enabled: true,
-        createdAt: new Date(),
+        created_at: new Date(),
       };
-      webhookConfigs.set(repoFullName, config);
+      webhookConfigs.set(repo_full_name, config);
     }
 
-    // Update settings
-    config.autoReview = autoReview ?? config.autoReview ?? true;
-    config.autoDescribe = autoDescribe ?? config.autoDescribe ?? true;
-    config.autoImprove = autoImprove ?? config.autoImprove ?? false;
-    config.postComments = postComments ?? config.postComments ?? true;
-    config.updatedAt = new Date();
+    config.auto_review = auto_review ?? config.auto_review ?? true;
+    config.auto_describe = auto_describe ?? config.auto_describe ?? true;
+    config.auto_improve = auto_improve ?? config.auto_improve ?? false;
+    config.post_comments = post_comments ?? config.post_comments ?? true;
+    config.updated_at = new Date();
 
     return new Response(
       JSON.stringify({
         id: config.id,
-        repoFullName: config.repoFullName,
-        webhookUrl: config.webhookUrl,
+        repo_full_name: config.repo_full_name,
+        webhook_url: config.webhook_url,
         secret: config.secret,
         enabled: config.enabled,
-        autoReview: config.autoReview,
-        autoDescribe: config.autoDescribe,
-        autoImprove: config.autoImprove,
-        postComments: config.postComments,
+        auto_review: config.auto_review,
+        auto_describe: config.auto_describe,
+        auto_improve: config.auto_improve,
+        post_comments: config.post_comments,
       }),
       {
         status: 200,
@@ -55,42 +57,40 @@ export async function POST(request: Request) {
       }
     );
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
+    logger.error('Webhook config error:', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500
     );
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const repoFullName = searchParams.get('repo');
+    const repo_full_name = searchParams.get('repo');
 
-    if (!repoFullName) {
-      return new Response(JSON.stringify({ error: 'Missing repo parameter' }), {
-        status: 400,
-      });
+    if (!repo_full_name) {
+      return formatErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Missing repo parameter', 400);
     }
 
-    const config = webhookConfigs.get(repoFullName);
+    const config = webhookConfigs.get(repo_full_name);
 
     if (!config) {
-      return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
-        status: 404,
-      });
+      return formatErrorResponse(ERROR_CODES.NOT_FOUND, 'Webhook not configured', 404);
     }
 
     return new Response(
       JSON.stringify({
         id: config.id,
-        repoFullName: config.repoFullName,
-        webhookUrl: config.webhookUrl,
+        repo_full_name: config.repo_full_name,
+        webhook_url: config.webhook_url,
         enabled: config.enabled,
-        autoReview: config.autoReview,
-        autoDescribe: config.autoDescribe,
-        autoImprove: config.autoImprove,
-        postComments: config.postComments,
+        auto_review: config.auto_review,
+        auto_describe: config.auto_describe,
+        auto_improve: config.auto_improve,
+        post_comments: config.post_comments,
       }),
       {
         status: 200,
@@ -98,33 +98,41 @@ export async function GET(request: Request) {
       }
     );
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
+    logger.error('Webhook config GET error:', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500
     );
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const repoFullName = searchParams.get('repo');
-
-    if (!repoFullName) {
-      return new Response(JSON.stringify({ error: 'Missing repo parameter' }), {
-        status: 400,
-      });
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401);
     }
 
-    webhookConfigs.delete(repoFullName);
+    const { searchParams } = new URL(request.url);
+    const repo_full_name = searchParams.get('repo');
+
+    if (!repo_full_name) {
+      return formatErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Missing repo parameter', 400);
+    }
+
+    webhookConfigs.delete(repo_full_name);
 
     return new Response(JSON.stringify({ message: 'Webhook disabled' }), {
       status: 200,
     });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
+    logger.error('Webhook config DELETE error:', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500
     );
   }
 }

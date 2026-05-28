@@ -1,24 +1,34 @@
-import { createSSEHeaders, fetchGitHubPR, createMockPRData, createAIHandler, encodeSSE } from '../utils';
+import { NextRequest } from 'next/server';
+import { fetchGitHubPR, createMockPRData, createAIHandler, encodeSSE } from '../utils';
 import { createCapabilityRegistry } from '../../../lib/capabilities';
 import type { CapabilityInput } from '../../../lib/capabilities';
+import { CapabilitiesRequestSchema } from '@/lib/validation';
+import { parseRequestBody, formatErrorResponse, ERROR_CODES, logger } from '@/lib/errors';
+import { rateLimitMiddleware, addRateLimitHeaders } from '@/lib/middleware/rateLimit';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+
   try {
-    const { prUrl, diff, capabilities, userQuery } = await request.json();
+    const rateLimitResponse = rateLimitMiddleware(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
-    if (!prUrl && !diff) {
-      return new Response(
-        JSON.stringify({ error: 'Either prUrl or diff is required' }),
-        { status: 400 }
-      );
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401, undefined, requestId);
     }
 
-    // Fetch or create PR data
+    const parseResult = await parseRequestBody(request, CapabilitiesRequestSchema);
+    if (!parseResult.success) return parseResult.error;
+
+    const { pr_url, diff, capabilities_list, user_query } = parseResult.data;
+
     let prData;
-    if (prUrl) {
-      const partialData = await fetchGitHubPR(prUrl);
+    if (pr_url) {
+      const partialData = await fetchGitHubPR(pr_url);
       prData = {
-        url: prUrl,
+        url: pr_url,
         title: partialData.title || 'Pull Request',
         description: partialData.description || '',
         diff: partialData.diff || '',
@@ -35,24 +45,22 @@ export async function POST(request: Request) {
 
     const aiHandler = createAIHandler();
     const registry = createCapabilityRegistry(aiHandler);
-    const capabilityList = Array.isArray(capabilities) ? capabilities : [capabilities];
+    const capabilityList = Array.isArray(capabilities_list) ? capabilities_list : [capabilities_list];
 
-    // Validate capabilities
-    const validCapabilities = capabilityList.filter((c) => registry.get(c));
+    const validCapabilities = capabilityList.filter((c: string) => registry.get(c));
     if (validCapabilities.length === 0) {
-      return new Response(
-        JSON.stringify({
-          error: 'No valid capabilities specified',
-          available: registry.list().map((c) => c.name),
-        }),
-        { status: 400 }
+      return formatErrorResponse(
+        'NO_VALID_CAPABILITIES',
+        'No valid capabilities specified',
+        400,
+        { available: registry.list().map((c: any) => c.name) },
+        requestId
       );
     }
 
-    // Stream results from multiple capabilities
     const input: CapabilityInput = {
       prData,
-      userQuery,
+      userQuery: user_query,
     };
 
     const responseStream = new ReadableStream({
@@ -65,9 +73,7 @@ export async function POST(request: Request) {
               const stream = registry.streamCapability(capabilityName, input);
 
               controller.enqueue(
-                encoder.encode(
-                  encodeSSE(`[START] ${capabilityName}`)
-                )
+                encoder.encode(encodeSSE(`[START] ${capabilityName}`))
               );
 
               for await (const chunk of stream) {
@@ -97,27 +103,32 @@ export async function POST(request: Request) {
       },
     });
 
-    return new Response(responseStream, {
+    return addRateLimitHeaders(new Response(responseStream, {
       status: 200,
-      headers: createSSEHeaders(),
-    });
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    }), request, '/api/capabilities');
   } catch (error) {
-    console.error('Capabilities API error:', error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 500 }
+    logger.error('Capabilities API error:', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500,
+      undefined,
+      requestId
     );
   }
 }
 
-export async function GET(_request: Request) {
+export async function GET(_request: NextRequest) {
   try {
     const aiHandler = createAIHandler();
     const registry = createCapabilityRegistry(aiHandler);
 
-    const capabilities = registry.list().map((c) => ({
+    const capabilities = registry.list().map((c: any) => ({
       name: c.name,
       description: c.description,
     }));
@@ -127,11 +138,10 @@ export async function GET(_request: Request) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 500 }
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500
     );
   }
 }

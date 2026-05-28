@@ -76,11 +76,14 @@ export function verifyGitHubSignature(
   
   const expectedSignature = `sha256=${hash}`;
   
-  // Use timing-safe comparison to prevent timing attacks
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function generateWebhookSecret(): string {

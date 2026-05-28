@@ -1,49 +1,39 @@
+import { NextRequest } from 'next/server';
 import { verifyGitHubSignature } from '../../../../lib/webhooks';
 import { WebhookHandler } from '../../../../lib/webhookHandler';
 import type { GitHubWebhookPayload } from '../../../../lib/webhooks';
+import { formatErrorResponse, ERROR_CODES, logger } from '@/lib/errors';
+import { webhookRateLimit } from '@/lib/middleware/rateLimit';
 
-// In production, store these in database
-const webhookConfigs = new Map<string, any>();
+export const webhookConfigs = new Map<string, any>();
 const webhookEvents = new Map<string, any>();
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Get the signature from headers
+    const rateLimitResponse = webhookRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const signature = request.headers.get('x-hub-signature-256');
     if (!signature) {
-      return new Response(JSON.stringify({ error: 'No signature provided' }), {
-        status: 401,
-      });
+      return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'No signature provided', 401);
     }
 
-    // Get raw body for signature verification
     const payload = await request.text();
 
-    // Get webhook secret from environment
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      return new Response(
-        JSON.stringify({ error: 'Webhook secret not configured' }),
-        { status: 500 }
-      );
+      return formatErrorResponse(ERROR_CODES.INTERNAL_ERROR, 'Webhook secret not configured', 500);
     }
 
-    // Verify signature
     if (!verifyGitHubSignature(payload, signature, webhookSecret)) {
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-        status: 401,
-      });
+      return formatErrorResponse(ERROR_CODES.INVALID_WEBHOOK_SECRET, 'Invalid signature', 401);
     }
 
-    // Parse payload
     const data: GitHubWebhookPayload = JSON.parse(payload);
 
-    // Get webhook config for this repo
     const repoFullName = data.repository?.full_name;
     if (!repoFullName) {
-      return new Response(JSON.stringify({ error: 'Invalid repository' }), {
-        status: 400,
-      });
+      return formatErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid repository', 400);
     }
 
     const config = webhookConfigs.get(repoFullName);
@@ -54,7 +44,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Process webhook event
     const handler = new WebhookHandler({
       autoReview: config.autoReview,
       autoDescribe: config.autoDescribe,
@@ -75,16 +64,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Store event
     event.webhookConfigId = config.id;
     webhookEvents.set(event.id, event);
 
-    // Queue background job to process tools
     const prUrl = data.pull_request?.html_url;
     if (prUrl && event.tools.length > 0) {
-      // In production, use a job queue like BullMQ
       processWebhookEvent(event, prUrl, handler, config).catch((error) => {
-        console.error('Failed to process webhook event:', error);
+        logger.error('Failed to process webhook event:', error);
       });
     }
 
@@ -92,10 +78,11 @@ export async function POST(request: Request) {
       status: 202,
     });
   } catch (error) {
-    console.error('Webhook error:', error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
+    logger.error('Webhook error:', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500
     );
   }
 }
@@ -109,15 +96,13 @@ async function processWebhookEvent(
   event.status = 'processing';
 
   try {
-    // Execute tools
-    const results = await handler.executeTools(prUrl, event.tools, (tool, _result) => {
-      console.log(`[Webhook] Tool ${tool} completed`);
+    const results = await handler.executeTools(prUrl, event.tools, (_tool: string, _result: any) => {
+      logger.info(`[Webhook] Tool ${_tool} completed`);
     });
 
     event.results = results;
     event.status = 'completed';
 
-    // Post comment if enabled
     if (config.postComments && prUrl) {
       const comment = handler.formatResultsAsComment(results);
       const match = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
@@ -144,22 +129,17 @@ async function processWebhookEvent(
   }
 }
 
-// Expose webhook event status endpoint
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const eventId = searchParams.get('eventId');
 
   if (!eventId) {
-    return new Response(JSON.stringify({ error: 'Missing eventId' }), {
-      status: 400,
-    });
+    return formatErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Missing eventId', 400);
   }
 
   const event = webhookEvents.get(eventId);
   if (!event) {
-    return new Response(JSON.stringify({ error: 'Event not found' }), {
-      status: 404,
-    });
+    return formatErrorResponse(ERROR_CODES.NOT_FOUND, 'Event not found', 404);
   }
 
   return new Response(JSON.stringify(event), {
