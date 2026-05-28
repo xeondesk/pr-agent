@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 export interface GitHubWebhookPayload {
   action: string;
@@ -73,10 +73,13 @@ export function verifyGitHubSignature(
     .createHmac('sha256', secret)
     .update(payload)
     .digest('hex');
-  
+
   const expectedSignature = `sha256=${hash}`;
-  
-  // Use timing-safe comparison to prevent timing attacks
+
+  if (signature.length !== expectedSignature.length) {
+    return false;
+  }
+
   return crypto.timingSafeEqual(
     Buffer.from(signature),
     Buffer.from(expectedSignature)

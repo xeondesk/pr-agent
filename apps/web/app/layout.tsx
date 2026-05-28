@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import React from 'react';
+import { AuthProvider } from '@/providers/AuthProvider';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 
@@ -17,15 +18,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-background text-text-primary">
-        <div className="flex">
-          <Sidebar />
-          <div className="flex-1 flex flex-col md:ml-0">
-            <Navbar />
-            <main className="flex-1 overflow-auto bg-background">
-              {children}
-            </main>
+        <AuthProvider>
+          <div className="flex">
+            <Sidebar />
+            <div className="flex-1 flex flex-col md:ml-0">
+              <Navbar />
+              <main className="flex-1 overflow-auto bg-background">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
+        </AuthProvider>
       </body>
     </html>
   );

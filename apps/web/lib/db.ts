@@ -1,271 +1,239 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
 
-let supabase: ReturnType<typeof createClient> | null = null;
+let supabase: SupabaseClient | null = null;
 
-export function getSupabaseClient() {
-  if (!supabase && supabaseUrl && supabaseAnonKey) {
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
+export function getSupabaseClient(): SupabaseClient | null {
+  if (supabase) return supabase;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[DB] Supabase not configured. Using in-memory fallback.');
+    }
+    return null;
   }
+
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    global: {
+      headers: {
+        'x-application-name': 'pr-agent',
+      },
+    },
+    db: {
+      schema: 'public',
+    },
+  });
+
   return supabase;
 }
 
-// Database schema interfaces
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  context: string,
+  maxRetries: number = MAX_RETRIES
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < maxRetries - 1) {
+        const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
+        console.warn(`[DB] ${context} failed (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError || new Error(`[DB] ${context} failed after ${maxRetries} retries`);
+}
+
+export async function executeQuery<T>(
+  queryFn: (client: SupabaseClient) => Promise<{ data: T | null; error: any }>,
+  context: string
+): Promise<T> {
+  const client = getSupabaseClient();
+  if (!client) {
+    throw new Error(`Database not configured for: ${context}`);
+  }
+
+  return withRetry(async () => {
+    const { data, error } = await queryFn(client);
+    if (error) throw error;
+    if (data === null || data === undefined) {
+      throw new Error(`No data returned for: ${context}`);
+    }
+    return data;
+  }, context);
+}
+
+export async function insertRecord<T extends Record<string, unknown>>(
+  table: string,
+  record: T,
+  _context?: string
+): Promise<T> {
+  return executeQuery(
+    (client) =>
+      client.from(table).insert(record as any).select().single() as any,
+    _context || `insert into ${table}`
+  );
+}
+
+export async function updateRecord<T extends Record<string, unknown>>(
+  table: string,
+  match: Record<string, unknown>,
+  updates: Partial<T>,
+  _context?: string
+): Promise<T> {
+  return executeQuery(
+    (client) => {
+      let query = client.from(table).update(updates as any);
+      for (const [key, value] of Object.entries(match)) {
+        query = query.eq(key, value as any);
+      }
+      return query.select().single() as any;
+    },
+    _context || `update ${table}`
+  );
+}
+
+export async function findRecord<T>(
+  table: string,
+  match: Record<string, unknown>,
+  _context?: string
+): Promise<T | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    let query = client.from(table).select('*');
+    for (const [key, value] of Object.entries(match)) {
+      query = query.eq(key, value as any);
+    }
+    const { data, error } = await query.single();
+    if (error) return null;
+    return data as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteRecord(
+  table: string,
+  match: Record<string, unknown>,
+  _context?: string
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    let query = client.from(table).delete();
+    for (const [key, value] of Object.entries(match)) {
+      query = query.eq(key, value as any);
+    }
+    const { error } = await query;
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export type { SupabaseClient };
+
 export interface Conversation {
   id: string;
   userId: string;
+  user_id: string;
   title: string;
   prUrl?: string;
+  pr_url?: string;
   prData?: Record<string, any>;
+  pr_data?: Record<string, any>;
   status: 'active' | 'archived';
   createdAt: Date;
+  created_at: string;
   updatedAt: Date;
+  updated_at: string;
 }
 
 export interface ConversationMessage {
   id: string;
   conversationId: string;
+  conversation_id: string;
   role: 'user' | 'assistant';
   content: string;
   capability?: string;
   metadata?: Record<string, any>;
   createdAt: Date;
+  created_at: string;
 }
 
 export interface WebhookConfig {
   id: string;
   userId: string;
+  user_id: string;
   repoFullName: string;
+  repo_full_name: string;
   webhookSecret: string;
+  webhook_secret: string;
   webhookUrl: string;
+  webhook_url: string;
   enabled: boolean;
   autoReview: boolean;
+  auto_review: boolean;
   autoDescribe: boolean;
+  auto_describe: boolean;
   autoImprove: boolean;
+  auto_improve: boolean;
   postComments: boolean;
+  post_comments: boolean;
   createdAt: Date;
+  created_at: string;
   updatedAt: Date;
+  updated_at: string;
 }
 
 export interface WebhookEvent {
   id: string;
   webhookConfigId: string;
+  webhook_config_id: string;
   prNumber: number;
+  pr_number: number;
   action: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   tools: string[];
   results?: Record<string, string>;
   error?: string;
   createdAt: Date;
+  created_at: string;
   completedAt?: Date;
+  completed_at?: string;
 }
 
 export interface Feedback {
   id: string;
   conversationMessageId: string;
-  rating: number;// 1-5
+  conversation_message_id: string;
+  rating: number;
   comment?: string;
   helpful: boolean;
   createdAt: Date;
+  created_at: string;
 }
 
-// SQL Schema Definition (for reference)
 export const SCHEMA_SQL = `
--- Users table (managed by Supabase Auth)
--- public.auth.users
-
--- Conversations table
-CREATE TABLE IF NOT EXISTS conversations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  pr_url TEXT,
-  pr_data JSONB,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Conversation messages table
-CREATE TABLE IF NOT EXISTS conversation_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-  content TEXT NOT NULL,
-  capability TEXT,
-  metadata JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Webhook configurations
-CREATE TABLE IF NOT EXISTS webhook_configs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  repo_full_name TEXT NOT NULL UNIQUE,
-  webhook_secret TEXT NOT NULL,
-  webhook_url TEXT NOT NULL,
-  enabled BOOLEAN DEFAULT TRUE,
-  auto_review BOOLEAN DEFAULT TRUE,
-  auto_describe BOOLEAN DEFAULT TRUE,
-  auto_improve BOOLEAN DEFAULT FALSE,
-  post_comments BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Webhook events
-CREATE TABLE IF NOT EXISTS webhook_events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  webhook_config_id UUID NOT NULL REFERENCES webhook_configs(id) ON DELETE CASCADE,
-  pr_number INTEGER NOT NULL,
-  action TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
-  tools TEXT[] NOT NULL DEFAULT '{}',
-  results JSONB,
-  error TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  completed_at TIMESTAMP WITH TIME ZONE
-);
-
--- Feedback table
-CREATE TABLE IF NOT EXISTS feedback (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_message_id UUID NOT NULL REFERENCES conversation_messages(id) ON DELETE CASCADE,
-  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-  comment TEXT,
-  helpful BOOLEAN,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create indices
-CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX IF NOT EXISTS idx_conversation_messages_conversation_id ON conversation_messages(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_webhook_configs_user_id ON webhook_configs(user_id);
-CREATE INDEX IF NOT EXISTS idx_webhook_events_config_id ON webhook_events(webhook_config_id);
-
--- Enable RLS
-ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE webhook_configs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can view their own conversations" ON conversations
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own conversations" ON conversations
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own conversations" ON conversations
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own conversations" ON conversations
-  FOR DELETE USING (auth.uid() = user_id);
-
--- Similar policies for conversation_messages, webhook_configs, webhook_events, feedback
+-- See lib/db/migrations/ for full schema
 `;
-
-// Database operations
-export async function saveConversation(
-  userId: string,
-  conversation: Omit<Conversation, 'id'>
-): Promise<Conversation | null> {
-  const client = getSupabaseClient();
-  if (!client) return null;
-
-  try {
-    const { data, error } = await (client
-      .from('conversations')
-      .insert([
-        {
-          user_id: userId,
-          title: conversation.title,
-          pr_url: conversation.prUrl || null,
-          pr_data: conversation.prData || null,
-          status: conversation.status,
-        },
-      ] as any)
-      .select()
-      .single());
-
-    if (error) {
-      console.error('Failed to save conversation:', error);
-      return null;
-    }
-
-    return data as Conversation;
-  } catch (err) {
-    console.error('Error saving conversation:', err);
-    return null;
-  }
-}
-
-export async function saveMessage(
-  conversationId: string,
-  message: Omit<ConversationMessage, 'id' | 'createdAt'>
-): Promise<ConversationMessage | null> {
-  const client = getSupabaseClient();
-  if (!client) return null;
-
-  try {
-    const { data, error } = await (client
-      .from('conversation_messages')
-      .insert([
-        {
-          conversation_id: conversationId,
-          role: message.role,
-          content: message.content,
-          capability: message.capability || null,
-          metadata: message.metadata || null,
-        },
-      ] as any)
-      .select()
-      .single());
-
-    if (error) {
-      console.error('Failed to save message:', error);
-      return null;
-    }
-
-    return data as ConversationMessage;
-  } catch (err) {
-    console.error('Error saving message:', err);
-    return null;
-  }
-}
-
-export async function saveFeedback(
-  messageId: string,
-  feedback: Omit<Feedback, 'id' | 'createdAt'>
-): Promise<Feedback | null> {
-  const client = getSupabaseClient();
-  if (!client) return null;
-
-  try {
-    const { data, error } = await (client
-      .from('feedback')
-      .insert([
-        {
-          conversation_message_id: messageId,
-          rating: feedback.rating,
-          comment: feedback.comment || null,
-          helpful: feedback.helpful || null,
-        },
-      ] as any)
-      .select()
-      .single());
-
-    if (error) {
-      console.error('Failed to save feedback:', error);
-      return null;
-    }
-
-    return data as Feedback;
-  } catch (err) {
-    console.error('Error saving feedback:', err);
-    return null;
-  }
-}
