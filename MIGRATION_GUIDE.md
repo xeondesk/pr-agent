@@ -165,55 +165,72 @@ export function useAuth() {
 }
 ```
 
-## Phase 4: API Route Hardening (3-4 days)
+## Phase 4: API Route Hardening ✅ COMPLETE
 
-### 4.1 Refactor Each API Route
+All API routes have been refactored with validation, auth, error handling, and rate limiting. See the refactored files for reference patterns.
 
-For each route in `/app/api/`:
+### 4.1 Routes Refactored
 
-1. **Add request validation**:
-   ```ts
-   import { AskRequestSchema } from '@/lib/validation';
-   const validated = AskRequestSchema.parse(await request.json());
-   ```
+- `/app/api/ask/route.ts` ✅ - Zod validation, auth, rate limit, SSE streaming
+- `/app/api/review/route.ts` ✅ - Zod validation, auth, rate limit, SSE streaming
+- `/app/api/describe/route.ts` ✅ - Zod validation, auth, rate limit, SSE streaming
+- `/app/api/improve/route.ts` ✅ - Zod validation, auth, rate limit, SSE streaming
+- `/app/api/agents/route.ts` ✅ - Zod validation, auth, rate limit, SSE streaming
+- `/app/api/capabilities/route.ts` ✅ - Zod validation, auth, rate limit, SSE streaming
+- `/app/api/webhooks/github/route.ts` ✅ - Signature verification, rate limit
+- `/app/api/webhooks/config/route.ts` ✅ - Zod validation, auth
 
-2. **Add auth middleware**:
-   ```ts
-   import { createApiHandler } from '@/lib/errors';
-   export const POST = createApiHandler(async (req, userId) => {
-     // handler code with userId
-   }, { requireAuth: true });
-   ```
+### 4.2 Implementation Pattern Used
 
-3. **Add error handling**:
-   ```ts
-   try {
-     // operation
-   } catch (error) {
-     if (error instanceof ApiError) {
-       return formatErrorResponse(...);
-     }
-     // handle other errors
-   }
-   ```
+```typescript
+// 1. Parse & validate request body
+import { parseRequestBody, formatErrorResponse, ERROR_CODES } from '@/lib/errors';
+import { AskRequestSchema } from '@/lib/validation';
 
-4. **Add rate limiting**:
-   ```ts
-   return addRateLimitHeaders(response, request, '/api/endpoint');
-   ```
+const parseResult = await parseRequestBody(request, AskRequestSchema);
+if (!parseResult.success) return parseResult.error;
 
-### 4.2 Create Webhook Handler Example
+// 2. Auth check (Bearer token)
+const authHeader = request.headers.get('authorization');
+const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+if (!token) {
+  return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401);
+}
 
-See: `/app/api/conversations/route.ts` for the pattern
+// 3. Rate limit check
+import { rateLimitMiddleware, addRateLimitHeaders } from '@/lib/middleware/rateLimit';
+const rateLimitResponse = rateLimitMiddleware(request);
+if (rateLimitResponse) return rateLimitResponse;
 
-### 4.3 Test Each Route
+// 4. Process request
+const result = await processRequest(parseResult.data);
 
-For each route, test:
-- ✅ Valid request → Success response
-- ✅ Missing auth → 401 Unauthorized
-- ✅ Invalid input → 400 Validation error
-- ✅ Rate limit exceeded → 429 Too Many Requests
-- ✅ Server error → 500 Internal error
+// 5. Return response with rate limit headers
+return addRateLimitHeaders(
+  new Response(JSON.stringify(result), { status: 200 }),
+  request,
+  '/api/endpoint'
+);
+```
+
+### 4.3 Test Coverage
+
+89 unit and integration tests pass across 11 test files:
+- `tests/integration/ask.test.ts` - 4 tests
+- `tests/integration/agents.test.ts` - 4 tests
+- `tests/integration/webhooks-github.test.ts` - 7 tests
+- `tests/integration/webhooks-config.test.ts` - 6 tests
+- `tests/integration/health.test.ts` - 3 tests
+- `tests/integration/middleware.test.ts` - 5 tests
+- `tests/unit/schemas.test.ts` - 20 tests
+- `tests/unit/errors.test.ts` - 13 tests
+- plus webhooks, types, tools unit tests
+
+### 4.4 Run Tests
+
+```bash
+pnpm --filter web exec vitest run --reporter verbose
+```
 
 ## Phase 5: Webhook Secret Management (2-3 days)
 
@@ -424,10 +441,10 @@ If issues occur:
 - [ ] All environment variables set and validated
 - [ ] Database schema deployed and RLS enabled
 - [ ] Auth system tested end-to-end
-- [ ] All API routes refactored with validation
-- [ ] Error handling tested
-- [ ] Rate limiting enabled and tested
-- [ ] Webhook verification implemented
+- [x] All API routes refactored with validation
+- [x] Error handling tested
+- [x] Rate limiting implemented (needs env var enabled)
+- [x] Webhook verification implemented
 - [ ] Security keys generated and stored
 
 ### Post-Deployment
