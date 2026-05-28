@@ -1,74 +1,93 @@
-import { NextResponse } from 'next/server';
-import { withAuth } from '@/lib/api/middleware';
-import { describeRequestSchema, type DescribeRequest } from '@/lib/api/schemas';
-import type { ApiRequest } from '@/lib/api/types';
-import { createSSEHeaders, fetchGitHubPR, createAIHandler, encodeSSE } from '../utils';
-import { executeTool } from '@/lib/tools';
-import { ApiError } from '@/lib/api/errors';
+import { NextRequest } from 'next/server';
+import { fetchGitHubPR, createMockPRData, createAIHandler, encodeSSE } from '../utils';
+import { executeTool } from '../../../lib/tools';
+import { DescribeRequestSchema } from '@/lib/validation';
+import { parseRequestBody, formatErrorResponse, ERROR_CODES, logger } from '@/lib/errors';
+import { rateLimitMiddleware, addRateLimitHeaders } from '@/lib/middleware/rateLimit';
 
-async function handler(req: ApiRequest<DescribeRequest>) {
-  const { prUrl, diff, userQuery } = req.body;
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
 
-  let prData;
-  if (prUrl) {
-    try {
-      const githubData = await fetchGitHubPR(prUrl);
-      prData = {
-        url: prUrl,
-        title: githubData.title || 'PR',
-        description: githubData.description || '',
-        diff: githubData.diff || diff || '',
-        files: githubData.files || [],
-        author: githubData.author || 'unknown',
-        baseBranch: githubData.baseBranch || 'main',
-        headBranch: githubData.headBranch || 'feature',
-        createdAt: githubData.createdAt || new Date().toISOString(),
-        updatedAt: githubData.updatedAt || new Date().toISOString(),
-      };
-    } catch (error) {
-      throw new ApiError(
-        'PR_FETCH_FAILED',
-        `Failed to fetch PR data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        502
-      );
+  try {
+    const rateLimitResponse = rateLimitMiddleware(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401, undefined, requestId);
     }
-  } else {
-    throw new ApiError('INVALID_INPUT', 'PR URL is required', 400);
-  }
 
-  const aiHandler = createAIHandler();
+    const parseResult = await parseRequestBody(request, DescribeRequestSchema);
+    if (!parseResult.success) return parseResult.error;
 
-  const responseStream = new ReadableStream({
-    async start(controller) {
-      try {
-        const encoder = new TextEncoder();
-        const stream = executeTool('describe', {
-          prData,
-          context: userQuery || '',
-          userQuery: userQuery || '',
-        }, aiHandler);
+    const { pr_url, diff } = parseResult.data;
 
-        for await (const chunk of stream) {
-          controller.enqueue(encoder.encode(encodeSSE(chunk)));
-        }
-
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        controller.enqueue(
-          new TextEncoder().encode(`data: Error: ${errorMsg}\n\n`)
-        );
-        controller.close();
+    let prData;
+    try {
+      if (pr_url) {
+        const githubData = await fetchGitHubPR(pr_url);
+        prData = {
+          url: pr_url,
+          title: githubData.title || 'PR',
+          description: githubData.description || '',
+          diff: githubData.diff || diff || '',
+          files: githubData.files || [],
+          author: githubData.author || 'unknown',
+          baseBranch: githubData.baseBranch || 'main',
+          headBranch: githubData.headBranch || 'feature',
+          createdAt: githubData.createdAt || new Date().toISOString(),
+          updatedAt: githubData.updatedAt || new Date().toISOString(),
+        };
+      } else {
+        prData = createMockPRData(diff || '', 'local');
       }
-    },
-  });
+    } catch {
+      prData = createMockPRData(diff || '', pr_url || 'local-diff');
+    }
 
-  return new NextResponse(responseStream, {
-    headers: createSSEHeaders(),
-  });
+    const aiHandler = createAIHandler();
+
+    const responseStream = new ReadableStream({
+      async start(controller) {
+        try {
+          const encoder = new TextEncoder();
+          const stream = executeTool('describe', {
+            prData,
+            context: '',
+          }, aiHandler);
+
+          for await (const chunk of stream) {
+            controller.enqueue(encoder.encode(encodeSSE(chunk)));
+          }
+
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          controller.enqueue(
+            new TextEncoder().encode(`data: Error: ${errorMsg}\n\n`)
+          );
+          controller.close();
+        }
+      },
+    });
+
+    return addRateLimitHeaders(new Response(responseStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    }), request, '/api/describe');
+  } catch (error) {
+    logger.error('Describe API error', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500,
+      undefined,
+      requestId
+    );
+  }
 }
-
-export const POST = withAuth(describeRequestSchema, handler, {
-  rateLimit: { maxRequests: 30, windowMs: 60000 },
-});

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/agents', () => ({
   AgentOrchestrator: vi.fn(),
@@ -7,6 +8,18 @@ vi.mock('@/lib/agents', () => ({
 vi.mock('@/app/api/utils', () => ({
   createSSEHeaders: vi.fn(() => new Headers({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' })),
   fetchGitHubPR: vi.fn(),
+  createMockPRData: vi.fn(() => ({
+    url: 'mock',
+    title: 'Mock PR',
+    description: 'Mock description',
+    diff: '',
+    files: [],
+    author: 'mock',
+    baseBranch: 'main',
+    headBranch: 'feature',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })),
   createAIHandler: vi.fn(() => ({})),
   encodeSSE: vi.fn((data: string) => `data: ${data}\n\n`),
 }));
@@ -56,13 +69,13 @@ describe('Agents API Route', () => {
 
       const { POST } = await import('@/app/api/agents/route');
 
-      const request = new Request('http://localhost/api/agents', {
+      const request = new NextRequest('http://localhost/api/agents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer test-token',
         },
-        body: JSON.stringify({ prUrl: 'https://github.com/owner/repo/pull/1' }),
+        body: JSON.stringify({ pr_url: 'https://github.com/owner/repo/pull/1' }),
       });
 
       const response = await POST(request);
@@ -73,13 +86,13 @@ describe('Agents API Route', () => {
     it('returns 400 for invalid mode', async () => {
       const { POST } = await import('@/app/api/agents/route');
 
-      const request = new Request('http://localhost/api/agents', {
+      const request = new NextRequest('http://localhost/api/agents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer test-token',
         },
-        body: JSON.stringify({ prUrl: 'https://github.com/owner/repo/pull/1', mode: 'invalid' }),
+        body: JSON.stringify({ pr_url: 'https://github.com/owner/repo/pull/1', mode: 'invalid' }),
       });
 
       const response = await POST(request);
@@ -91,10 +104,10 @@ describe('Agents API Route', () => {
     it('returns 401 without auth', async () => {
       const { POST } = await import('@/app/api/agents/route');
 
-      const request = new Request('http://localhost/api/agents', {
+      const request = new NextRequest('http://localhost/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prUrl: 'https://github.com/owner/repo/pull/1' }),
+        body: JSON.stringify({ pr_url: 'https://github.com/owner/repo/pull/1' }),
       });
 
       const response = await POST(request);
@@ -116,7 +129,7 @@ describe('Agents API Route', () => {
 
       const { GET } = await import('@/app/api/agents/route');
 
-      const request = new Request('http://localhost/api/agents', {
+      const request = new NextRequest('http://localhost/api/agents', {
         method: 'GET',
       });
 

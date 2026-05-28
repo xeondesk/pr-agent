@@ -1,82 +1,54 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { verifyGitHubSignature } from '@/lib/webhooks';
-import { WebhookHandler } from '@/lib/webhookHandler';
-import type { GitHubWebhookPayload } from '@/lib/webhooks';
-import { getSupabaseClient } from '@/lib/db';
-import { handleApiError } from '@/lib/api/errors';
+import { NextRequest } from 'next/server';
+import { verifyGitHubSignature } from '../../../../lib/webhooks';
+import { WebhookHandler } from '../../../../lib/webhookHandler';
+import type { GitHubWebhookPayload } from '../../../../lib/webhooks';
+import { formatErrorResponse, ERROR_CODES, logger } from '@/lib/errors';
+import { webhookRateLimit } from '@/lib/middleware/rateLimit';
+
+export const webhookConfigs = new Map<string, any>();
+const webhookEvents = new Map<string, any>();
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = webhookRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const signature = request.headers.get('x-hub-signature-256');
     if (!signature) {
-      return NextResponse.json(
-        { status: 'error', error: { code: 'SIGNATURE_MISSING', message: 'No signature provided' } },
-        { status: 401 }
-      );
+      return formatErrorResponse(ERROR_CODES.UNAUTHORIZED, 'No signature provided', 401);
     }
 
     const payload = await request.text();
 
-    const supabase = getSupabaseClient();
-    const eventId = crypto.randomUUID();
+    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      return formatErrorResponse(ERROR_CODES.INTERNAL_ERROR, 'Webhook secret not configured', 500);
+    }
 
-    let config;
-    if (supabase) {
-      const data: GitHubWebhookPayload = JSON.parse(payload);
-      const repoFullName = data.repository?.full_name;
-      if (!repoFullName) {
-        return NextResponse.json(
-          { status: 'error', error: { code: 'INVALID_REPO', message: 'Invalid repository' } },
-          { status: 400 }
-        );
-      }
-
-      const { data: dbConfig } = await supabase
-        .from('webhook_configs')
-        .select('*')
-        .eq('repo_full_name', repoFullName)
-        .eq('enabled', true)
-        .single();
-
-      if (!dbConfig) {
-        return NextResponse.json({ message: 'Webhook not configured for this repo' }, { status: 200 });
-      }
-
-      if (!verifyGitHubSignature(payload, signature, dbConfig.webhook_secret)) {
-        return NextResponse.json(
-          { status: 'error', error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } },
-          { status: 401 }
-        );
-      }
-
-      config = dbConfig;
-    } else {
-      const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-      if (!webhookSecret) {
-        return NextResponse.json(
-          { status: 'error', error: { code: 'NOT_CONFIGURED', message: 'Webhook secret not configured' } },
-          { status: 500 }
-        );
-      }
-
-      if (!verifyGitHubSignature(payload, signature, webhookSecret)) {
-        return NextResponse.json(
-          { status: 'error', error: { code: 'INVALID_SIGNATURE', message: 'Invalid signature' } },
-          { status: 401 }
-        );
-      }
-
-      config = { auto_review: true, auto_describe: true, auto_improve: false, post_comments: true };
+    if (!verifyGitHubSignature(payload, signature, webhookSecret)) {
+      return formatErrorResponse(ERROR_CODES.INVALID_WEBHOOK_SECRET, 'Invalid signature', 401);
     }
 
     const data: GitHubWebhookPayload = JSON.parse(payload);
-    const _repoFullName = data.repository?.full_name;
+
+    const repoFullName = data.repository?.full_name;
+    if (!repoFullName) {
+      return formatErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid repository', 400);
+    }
+
+    const config = webhookConfigs.get(repoFullName);
+    if (!config || !config.enabled) {
+      return new Response(
+        JSON.stringify({ message: 'Webhook not configured for this repo' }),
+        { status: 200 }
+      );
+    }
 
     const handler = new WebhookHandler({
-      autoReview: config.auto_review ?? true,
-      autoDescribe: config.auto_describe ?? true,
-      autoImprove: config.auto_improve ?? false,
-      postComments: config.post_comments ?? true,
+      autoReview: config.autoReview,
+      autoDescribe: config.autoDescribe,
+      autoImprove: config.autoImprove,
+      postComments: config.postComments,
     });
 
     let event;
@@ -86,123 +58,92 @@ export async function POST(request: NextRequest) {
     } else if (data.action === 'synchronize') {
       event = await handler.handlePRSynchronized(data);
     } else {
-      return NextResponse.json({ message: `Unhandled action: ${data.action}` }, { status: 200 });
+      return new Response(
+        JSON.stringify({ message: `Unhandled action: ${data.action}` }),
+        { status: 200 }
+      );
     }
 
-    event.id = eventId;
-
-    if (supabase) {
-      await supabase.from('webhook_events').insert({
-        id: eventId,
-        webhook_config_id: config.id,
-        pr_number: event.prNumber,
-        action: event.action,
-        status: event.status,
-        tools: event.tools,
-      });
-    }
+    event.webhookConfigId = config.id;
+    webhookEvents.set(event.id, event);
 
     const prUrl = data.pull_request?.html_url;
     if (prUrl && event.tools.length > 0) {
       processWebhookEvent(event, prUrl, handler, config).catch((error) => {
-        console.error('Failed to process webhook event:', error);
-        if (supabase) {
-          supabase.from('webhook_events').update({ status: 'failed', error: String(error), completed_at: new Date().toISOString() }).eq('id', eventId);
-        }
+        logger.error('Failed to process webhook event:', error);
       });
     }
 
-    return NextResponse.json({ message: 'Webhook received', eventId }, { status: 202 });
+    return new Response(JSON.stringify({ message: 'Webhook received', eventId: event.id }), {
+      status: 202,
+    });
   } catch (error) {
-    console.error('Webhook error:', error);
-    return handleApiError(error);
+    logger.error('Webhook error:', error);
+    return formatErrorResponse(
+      ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
   }
 }
 
-async function processWebhookEvent(event: any, prUrl: string, handler: WebhookHandler, config: any) {
+async function processWebhookEvent(
+  event: any,
+  prUrl: string,
+  handler: WebhookHandler,
+  config: any
+) {
   event.status = 'processing';
 
-  const supabase = getSupabaseClient();
-
   try {
-    const results = await handler.executeTools(prUrl, event.tools, (tool, _result) => {
-      console.log(`[Webhook] Tool ${tool} completed`);
+    const results = await handler.executeTools(prUrl, event.tools, (_tool: string, _result: any) => {
+      logger.info(`[Webhook] Tool ${_tool} completed`);
     });
 
     event.results = results;
     event.status = 'completed';
 
-    if (config.post_comments && prUrl) {
+    if (config.postComments && prUrl) {
       const comment = handler.formatResultsAsComment(results);
       const match = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
       if (match) {
         const [, owner, repo, prNumber] = match;
         const ghToken = process.env.GITHUB_TOKEN;
         if (ghToken) {
-          await handler.postCommentToPR(ghToken, owner, repo, parseInt(prNumber), comment);
+          await handler.postCommentToPR(
+            ghToken,
+            owner,
+            repo,
+            parseInt(prNumber),
+            comment
+          );
         }
       }
     }
 
     event.completedAt = new Date();
-
-    if (supabase) {
-      await supabase.from('webhook_events').update({
-        status: 'completed',
-        results,
-        completed_at: event.completedAt.toISOString(),
-      }).eq('id', event.id);
-    }
   } catch (error) {
     event.status = 'failed';
     event.error = error instanceof Error ? error.message : 'Unknown error';
     event.completedAt = new Date();
-
-    if (supabase) {
-      await supabase.from('webhook_events').update({
-        status: 'failed',
-        error: event.error,
-        completed_at: event.completedAt.toISOString(),
-      }).eq('id', event.id);
-    }
   }
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const eventId = searchParams.get('eventId');
+  const { searchParams } = new URL(request.url);
+  const eventId = searchParams.get('eventId');
 
-    if (!eventId) {
-      return NextResponse.json(
-        { status: 'error', error: { code: 'VALIDATION_ERROR', message: 'Missing eventId' } },
-        { status: 400 }
-      );
-    }
-
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      return NextResponse.json(
-        { status: 'error', error: { code: 'DB_UNAVAILABLE', message: 'Database not configured' } },
-        { status: 503 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from('webhook_events')
-      .select('*')
-      .eq('id', eventId)
-      .single();
-
-    if (error || !data) {
-      return NextResponse.json(
-        { status: 'error', error: { code: 'NOT_FOUND', message: 'Event not found' } },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(data);
-  } catch (error) {
-    return handleApiError(error);
+  if (!eventId) {
+    return formatErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Missing eventId', 400);
   }
+
+  const event = webhookEvents.get(eventId);
+  if (!event) {
+    return formatErrorResponse(ERROR_CODES.NOT_FOUND, 'Event not found', 404);
+  }
+
+  return new Response(JSON.stringify(event), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
