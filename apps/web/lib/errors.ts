@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { ZodError } from 'zod';
+import { ZodError, type ZodType } from 'zod';
 
 /**
  * Custom API Error class for consistent error handling
@@ -123,7 +123,7 @@ export function handleValidationError(
  */
 export async function parseRequestBody<T>(
   request: NextRequest,
-  schema: any
+  schema: ZodType<T>
 ): Promise<{ success: true; data: T } | { success: false; error: NextResponse }> {
   try {
     const body = await request.json();

@@ -87,7 +87,7 @@ export function addRateLimitHeaders(
   response: NextResponse | Response,
   _request: NextRequest | Request,
   endpoint: string
-): NextResponse | Response {
+): NextResponse {
   try {
     const key = getRateLimitKey(_request as NextRequest);
     const limiter = getLimiter(endpoint);
@@ -100,7 +100,7 @@ export function addRateLimitHeaders(
   } catch {
     // Skip rate limit headers if config unavailable
   }
-  return response;
+  return response as NextResponse;
 }
 
 export function webhookRateLimit(request: NextRequest): NextResponse | null {

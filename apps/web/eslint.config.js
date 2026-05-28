@@ -16,6 +16,8 @@ export default [
         ...globals.browser,
         ...globals.node,
         ...globals.vitest,
+        React: "readonly",
+        NodeJS: "readonly",
       },
     },
     plugins: {

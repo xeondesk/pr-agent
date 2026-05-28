@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
           const stream = executeTool('describe', {
             prData,
             context: '',
+            userQuery: '',
           }, aiHandler);
 
           for await (const chunk of stream) {

@@ -31,27 +31,27 @@ const envSchema = z.object({
   API_SIGNATURE_SECRET: z.string().min(32, 'API signature secret must be at least 32 characters'),
   
   // Rate limiting
-  RATE_LIMIT_ENABLED: z.string().transform(v => v === 'true').default('true'),
-  RATE_LIMIT_REQUESTS_PER_MINUTE: z.string().transform(Number).default('60'),
-  RATE_LIMIT_BURST_SIZE: z.string().transform(Number).default('10'),
+  RATE_LIMIT_ENABLED: z.string().default('true').transform(v => v === 'true'),
+  RATE_LIMIT_REQUESTS_PER_MINUTE: z.string().default('60').transform(Number),
+  RATE_LIMIT_BURST_SIZE: z.string().default('10').transform(Number),
   
   // Logging
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  ENABLE_REQUEST_LOGGING: z.string().transform(v => v === 'true').default('true'),
+  ENABLE_REQUEST_LOGGING: z.string().default('true').transform(v => v === 'true'),
   
   // Features
-  ENABLE_WEBHOOKS: z.string().transform(v => v === 'true').default('true'),
-  ENABLE_RATE_LIMITING: z.string().transform(v => v === 'true').default('true'),
-  ENABLE_ANALYTICS: z.string().transform(v => v === 'true').default('false'),
+  ENABLE_WEBHOOKS: z.string().default('true').transform(v => v === 'true'),
+  ENABLE_RATE_LIMITING: z.string().default('true').transform(v => v === 'true'),
+  ENABLE_ANALYTICS: z.string().default('false').transform(v => v === 'true'),
   
   // Development
-  DEBUG: z.string().transform(v => v === 'true').default('false'),
+  DEBUG: z.string().default('false').transform(v => v === 'true'),
   NEXT_PUBLIC_MOCK_USER_ID: z.string().optional(),
   
   // Timeouts
-  GITHUB_API_TIMEOUT_MS: z.string().transform(Number).default('10000'),
-  OPENAI_API_TIMEOUT_MS: z.string().transform(Number).default('30000'),
-  WEBHOOK_TIMEOUT_MS: z.string().transform(Number).default('30000'),
+  GITHUB_API_TIMEOUT_MS: z.string().default('10000').transform(Number),
+  OPENAI_API_TIMEOUT_MS: z.string().default('30000').transform(Number),
+  WEBHOOK_TIMEOUT_MS: z.string().default('30000').transform(Number),
   
   // Optional integrations
   SENTRY_DSN: z.string().url().optional(),

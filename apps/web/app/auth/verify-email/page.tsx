@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get('email') || '';
@@ -12,9 +12,7 @@ export default function VerifyEmailPage() {
   const [resendMessage, setResendMessage] = useState('');
 
   useEffect(() => {
-    // Check if user is already verified (would be redirected by middleware)
     const timer = setTimeout(() => {
-      // Auto-check verification every 5 seconds
       const token = localStorage.getItem('auth_token');
       if (token) {
         router.push('/dashboard');
@@ -98,5 +96,17 @@ export default function VerifyEmailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <p className="text-slate-400">Loading...</p>
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
