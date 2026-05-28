@@ -9,20 +9,38 @@
 }
 
 html {
-  background: #0a0e27;
+  min-height: 100%;
+  background: radial-gradient(circle at top, rgba(0, 112, 243, 0.18), transparent 25%),
+    radial-gradient(circle at 20% 10%, rgba(124, 58, 237, 0.12), transparent 18%),
+    #080b1d;
 }
 
 body {
-  background: #0a0e27;
+  min-height: 100vh;
+  background: transparent;
   color: #f5f5f5;
   font-family: system-ui, -apple-system, sans-serif;
   line-height: 1.6;
 }
 
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 80% 10%, rgba(56, 189, 248, 0.12), transparent 15%);
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+#root,
+#__next {
+  min-height: 100vh;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -30,33 +48,32 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2d2e44;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3d3e54;
+  background: rgba(255, 255, 255, 0.22);
 }
 
-/* Smooth transitions */
 @layer components {
   .transition-smooth {
     @apply transition-all duration-200 ease-out;
   }
 
   .card {
-    @apply rounded-lg border border-border bg-surface;
+    @apply rounded-3xl border border-border/70 bg-surface/95 backdrop-blur-xl shadow-xl shadow-black/20;
   }
 
   .btn-primary {
-    @apply bg-accent-primary hover:bg-accent-primary-dark text-white rounded-lg px-4 py-2 font-medium transition-smooth;
+    @apply bg-accent-primary hover:bg-accent-primary-dark text-white rounded-2xl px-4 py-2 font-medium transition-smooth;
   }
 
   .btn-secondary {
-    @apply bg-surface-secondary border border-border hover:bg-surface text-text-primary rounded-lg px-4 py-2 font-medium transition-smooth;
+    @apply bg-surface-secondary border border-border hover:bg-surface text-text-primary rounded-2xl px-4 py-2 font-medium transition-smooth;
   }
 
   .input {
-    @apply bg-surface-secondary border border-border rounded-lg px-3 py-2 text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-smooth;
+    @apply bg-surface-secondary border border-border rounded-2xl px-4 py-3 text-text-primary placeholder-text-tertiary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 transition-smooth;
   }
 }

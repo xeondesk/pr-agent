@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, MessageCircle, CheckCircle, AlertCircle, Eye } from 'lucide-react';
+import { Search, MessageCircle, CheckCircle, AlertCircle, Eye, Clock } from 'lucide-react';
 
 const PULL_REQUESTS = [
   {
@@ -42,101 +42,114 @@ const PULL_REQUESTS = [
   },
 ];
 
+const FILTERS = [
+  { key: 'all', label: 'All Reviews' },
+  { key: 'review', label: 'In Review' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'pending', label: 'Pending' },
+];
+
 export default function PullRequestsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
 
   return (
     <div className="p-8 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Pull Requests</h1>
-        <p className="text-text-secondary mt-2">AI-reviewed pull requests from your repositories</p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Pull Requests</h1>
+          <p className="text-text-secondary mt-2">AI-reviewed pull requests from your repositories.</p>
+        </div>
+        <div className="inline-flex items-center gap-3 rounded-3xl border border-border bg-surface-secondary px-4 py-3">
+          <Clock size={18} />
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Latest sync</p>
+            <p className="text-sm font-medium">3 minutes ago</p>
+          </div>
+        </div>
       </div>
 
-      {/* Filters and Search */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-        <div className="relative flex-1">
+      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+        <div className="relative w-full">
           <input
             type="text"
             placeholder="Search pull requests..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input w-full pl-10"
+            className="input w-full pl-12"
           />
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" />
         </div>
-        <div className="flex gap-2">
-          {['all', 'review', 'approved', 'pending'].map((f) => (
+
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map((option) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg transition-smooth capitalize ${
-                filter === f
-                  ? 'bg-accent-primary text-white'
+              key={option.key}
+              onClick={() => setFilter(option.key)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                filter === option.key
+                  ? 'bg-accent-primary text-white shadow-lg shadow-accent-primary/20'
                   : 'bg-surface-secondary text-text-secondary hover:bg-surface'
               }`}
             >
-              {f}
+              {option.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* PR List */}
       <div className="space-y-4">
         {PULL_REQUESTS.map((pr) => (
-          <div key={pr.id} className="card p-6 hover:border-accent-primary transition-smooth cursor-pointer">
-            <div className="flex flex-col gap-4">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold truncate">{pr.title}</h3>
-                  <p className="text-sm text-text-secondary mt-1">
-                    {pr.repo} • {pr.author} • {pr.created}
-                  </p>
-                </div>
-                <span
-                  className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                    pr.status === 'approved'
-                      ? 'bg-green-500/10 text-green-400'
-                      : pr.status === 'review'
-                        ? 'bg-blue-500/10 text-blue-400'
-                        : 'bg-yellow-500/10 text-yellow-400'
-                  }`}
-                >
-                  {pr.status === 'approved' && <CheckCircle size={14} className="inline mr-1" />}
-                  {pr.status === 'review' && <Eye size={14} className="inline mr-1" />}
-                  {pr.status === 'pending' && <AlertCircle size={14} className="inline mr-1" />}
-                  {pr.status}
-                </span>
+          <div key={pr.id} className="card p-6 hover:-translate-y-0.5 hover:border-accent-primary transition-smooth cursor-pointer">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <h3 className="text-xl font-semibold truncate">{pr.title}</h3>
+                <p className="text-sm text-text-secondary mt-2">
+                  {pr.repo} · {pr.author} · {pr.created}
+                </p>
               </div>
 
-              {/* Metrics */}
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-                <div className="bg-surface-secondary rounded-lg p-3">
-                  <p className="text-xs text-text-tertiary">Confidence</p>
-                  <p className="text-lg font-semibold mt-1">{Math.round(pr.confidence * 100)}%</p>
-                </div>
-                <div className="bg-surface-secondary rounded-lg p-3">
-                  <p className="text-xs text-text-tertiary">Issues</p>
-                  <p className="text-lg font-semibold mt-1 text-red-400">{pr.issues}</p>
-                </div>
-                <div className="bg-surface-secondary rounded-lg p-3">
-                  <p className="text-xs text-text-tertiary">Comments</p>
-                  <p className="text-lg font-semibold mt-1 flex items-center gap-1">
-                    <MessageCircle size={16} />
-                    {pr.comments}
-                  </p>
-                </div>
-                <div className="hidden md:block bg-surface-secondary rounded-lg p-3">
-                  <p className="text-xs text-text-tertiary">Reviewer</p>
-                  <p className="text-sm font-medium mt-1">{pr.reviewer}</p>
-                </div>
-                <button className="btn-secondary text-sm">
-                  View Details
-                </button>
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${
+                  pr.status === 'approved'
+                    ? 'bg-green-500/10 text-green-300'
+                    : pr.status === 'review'
+                      ? 'bg-blue-500/10 text-blue-300'
+                      : 'bg-amber-500/10 text-amber-300'
+                }`}
+              >
+                {pr.status === 'approved' && <CheckCircle size={14} />}
+                {pr.status === 'review' && <Eye size={14} />}
+                {pr.status === 'pending' && <AlertCircle size={14} />}
+                {pr.status}
+              </span>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-3xl border border-border bg-surface-secondary p-4">
+                <p className="text-xs text-text-secondary uppercase tracking-[0.2em]">Confidence</p>
+                <p className="mt-3 text-2xl font-semibold">{Math.round(pr.confidence * 100)}%</p>
               </div>
+              <div className="rounded-3xl border border-border bg-surface-secondary p-4">
+                <p className="text-xs text-text-secondary uppercase tracking-[0.2em]">Issues</p>
+                <p className="mt-3 text-2xl font-semibold text-red-400">{pr.issues}</p>
+              </div>
+              <div className="rounded-3xl border border-border bg-surface-secondary p-4">
+                <p className="text-xs text-text-secondary uppercase tracking-[0.2em]">Comments</p>
+                <p className="mt-3 text-2xl font-semibold flex items-center gap-2">
+                  <MessageCircle size={18} />
+                  {pr.comments}
+                </p>
+              </div>
+              <div className="rounded-3xl border border-border bg-surface-secondary p-4">
+                <p className="text-xs text-text-secondary uppercase tracking-[0.2em]">Reviewer</p>
+                <p className="mt-3 text-sm font-medium">{pr.reviewer}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button className="btn-primary text-sm">Open Review</button>
+              <button className="btn-secondary text-sm">More details</button>
             </div>
           </div>
         ))}
