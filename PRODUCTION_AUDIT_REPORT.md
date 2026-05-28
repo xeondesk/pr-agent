@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-PR-Agent is an AI-native pull request analysis platform. A prior audit (scored **25/100**) identified prototype-grade issues. Since then, **18 implementation tasks** have been completed, covering:
+PR-Agent is an AI-native pull request analysis platform. A prior audit (scored **25/100**) identified prototype-grade issues. Since then, **19 implementation tasks** have been completed, covering:
 
 | Area | Prior State | Current State |
 |------|------------|---------------|
@@ -20,10 +20,11 @@ PR-Agent is an AI-native pull request analysis platform. A prior audit (scored *
 | **Error Handling** | Bare `console.error`, no error classes | `ApiError` class hierarchy, `handleApiError()`, `ErrorBoundary` component, structured error responses |
 | **Deployment** | No Docker, no CI/CD | Multi-stage Dockerfile, docker-compose (web + redis), GitHub Actions (CI + deploy + security scan) |
 | **Webhooks** | Hardcoded `Map<>`, single shared secret | DB-backed per-repo config, event persistence, audit trail |
+| **Testing** | No tests | **94 tests** across **11 test files** (unit + integration for all API routes, middleware, schemas, errors, webhooks, tools) |
 
-**Estimated Remaining Effort:** 2-3 weeks for a senior team of 2-3 engineers.
+**Estimated Remaining Effort:** 1-2 weeks for a senior team of 2-3 engineers.
 
-**Production Readiness Score:** 📊 **58/100** (⬆️ +33 from baseline)
+**Production Readiness Score:** 📊 **62/100** (⬆️ +37 from baseline)
 
 ---
 
@@ -1070,10 +1071,10 @@ export async function someFunction(): Result<Data> {
     - Impact: Prevents key exposure
     - **Status:** Partially done (server-only usage exists); migrate to `@ai-sdk/openai`
 
-11. **[TESTS]** Add unit tests for API routes
+11. **[TESTS]** Add unit tests for API routes ✅
     - Time: 8-10 hours
     - Impact: Catches regressions
-    - **Status:** Not started
+    - **Status:** Done — 94 tests across 11 test files covering middleware, errors, schemas, types, webhooks, tools, health, ask, agents, webhooks/config, webhooks/github
 
 12. **[QUEUE]** Implement BullMQ queue for webhook processing
     - Time: 6-8 hours
@@ -1104,13 +1105,13 @@ export async function someFunction(): Result<Data> {
 | In-memory storage | CRITICAL | ✅ **RESOLVED** (schema + client ready) | 1h (execute migrations) |
 | No validation | HIGH | ✅ **RESOLVED** | 0h |
 | No error handling | HIGH | ✅ **RESOLVED** | 0h |
-| Missing tests | HIGH | ❌ Not started | 8-10h |
+| Missing tests | HIGH | 🟡 **Partially resolved** (94 tests across 11 files covering core routes) | 4-6h (coverage >80%) |
 | No logging | MEDIUM | ✅ **Basic logging in place** | 0h |
 | No rate limiting | MEDIUM | ✅ **RESOLVED** | 0h |
 | Weak typing | MEDIUM | ✅ **Partially resolved** (new code typed, legacy remains) | 2-3h |
 | No deployment setup | MEDIUM | ✅ **RESOLVED** | 0h |
 
-**Total Remaining Effort:** 12-15 hours (down from 48-68h)
+**Total Remaining Effort:** 10-12 hours (down from 48-68h)
 
 ### Accrued Cost of Technical Debt
 - **Security Risk:** 🟡 LOW (foundations in place, monitoring not yet configured)
@@ -1131,19 +1132,19 @@ export async function someFunction(): Result<Data> {
 | **Data Persistence** | 0/100 | 60/100 | +60 | Full Supabase client with retry + 3 migration files (awaiting execution) |
 | **Authentication** | 0/100 | 70/100 | +70 | JWT verification, AuthProvider, route middleware, session hooks |
 | **Error Handling** | 15/100 | 60/100 | +45 | ApiError classes, structured responses, ErrorBoundary component |
-| **Testing** | 0/100 | 0/100 | +0 | No tests yet (work in progress) |
+| **Testing** | 0/100 | 40/100 | +40 | 94 tests across 11 files covering all API routes, middleware, schemas, errors, webhooks, and tools |
 | **DevOps** | 10/100 | 65/100 | +55 | Docker + docker-compose + 3 GitHub Actions workflows |
 | **Monitoring** | 0/100 | 15/100 | +15 | Health endpoint created, audit log schema defined |
 | **API Design** | 30/100 | 75/100 | +45 | Consistent middleware pattern, Zod validation, request IDs |
 | **Code Quality** | 35/100 | 50/100 | +15 | Stricter types, removed mock fallbacks, lint/type-check clean |
 
-### **Overall Production Readiness: 58/100** 🟡 (⬆️ +33 from baseline)
+### **Overall Production Readiness: 62/100** 🟡 (⬆️ +37 from baseline)
 
-**Summary:** FOUNDATION IN PLACE — remaining gaps are testing, monitoring, and migration execution.
+**Summary:** FOUNDATION IN PLACE — remaining gaps are monitoring, migration execution, and test coverage.
 
 Focus should be on:
 1. Executing database migrations on Supabase
-2. Writing unit/integration tests
+2. Expanding test coverage (>80%)
 3. Adding Sentry/observability
 4. Implementing BullMQ job queues with Redis
 
@@ -1192,11 +1193,11 @@ Focus should be on:
 - [x] Add rate limit schema (`lib/db/migrations/003_rate_limiting.sql`)
 - [ ] **Remaining:** Monitor queue health
 
-**Friday: Testing Foundation**
-- [ ] Write unit tests for API routes
-- [ ] Write integration tests
+**Friday: Testing Foundation** ✅
+- [x] Write unit tests for API routes (94 tests across 11 files)
+- [x] Write integration tests (all API routes covered)
 - [x] Add GitHub Actions workflow (CI)
-- [ ] Set up code coverage reporting
+- [ ] **Remaining:** Set up code coverage reporting
 
 ### Week 3: Deployment (Mon-Fri)
 
