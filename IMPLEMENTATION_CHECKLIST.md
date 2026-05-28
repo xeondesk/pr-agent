@@ -36,29 +36,36 @@ Track progress on converting PR-Agent to production-ready code.
 ## API Hardening (Week 1-2)
 
 ### Day 5-6: Validation Schemas
-- [ ] Review `validation.ts` schemas
-- [ ] Add validation to `/api/ask/route.ts`
-- [ ] Add validation to `/api/review/route.ts`
-- [ ] Add validation to `/api/describe/route.ts`
-- [ ] Add validation to `/api/improve/route.ts`
-- [ ] Test each endpoint with invalid data
+- [x] Review `validation.ts` schemas
+- [x] Add validation to `/api/ask/route.ts`
+- [x] Add validation to `/api/review/route.ts`
+- [x] Add validation to `/api/describe/route.ts`
+- [x] Add validation to `/api/improve/route.ts`
+- [x] Add validation to `/api/agents/route.ts`
+- [x] Add validation to `/api/capabilities/route.ts`
+- [x] Test each endpoint with invalid data
 
 ### Day 7-8: Error Handling
-- [ ] Import `createApiHandler` in all API routes
-- [ ] Wrap each route handler with `createApiHandler`
-- [ ] Test 401 Unauthorized responses
-- [ ] Test 400 Validation errors
-- [ ] Test 500 Internal errors
-- [ ] Verify error codes are consistent
+- [x] Use `formatErrorResponse` / `parseRequestBody` in all API routes
+- [x] All routes return 401 for missing/invalid auth
+- [x] All routes return 400 for invalid input (via Zod validation)
+- [x] All routes return 500 for internal errors (caught by try/catch)
+- [x] Verify error codes are consistent (UNAUTHORIZED, VALIDATION_ERROR, INTERNAL_ERROR, etc.)
 
 ### Day 9-10: Webhook Hardening
-- [ ] Review webhook secret management in `security.ts`
-- [ ] Implement webhook signature verification in `/api/webhooks/github/route.ts`
-- [ ] Test valid webhook signature (should succeed)
-- [ ] Test invalid webhook signature (should return 401)
-- [ ] Generate and store test webhook secret
+- [x] Review webhook secret management in `security.ts`
+- [x] Implement webhook signature verification in `/api/webhooks/github/route.ts`
+- [x] Fix `verifyGitHubSignature` timing-safe comparison (pre-existing crash bug)
+- [x] Test valid webhook signature (should succeed)
+- [x] Test invalid webhook signature (should return 401)
+- [x] Test missing signature (should return 401)
+- [x] Generate and store test webhook secret
 
 ### Day 11-12: Rate Limiting
+- [x] Implement `rateLimitMiddleware` in all API routes
+- [x] Implement `webhookRateLimit` in webhook routes
+- [x] Add `addRateLimitHeaders` to all responses
+- [x] Handle config failure gracefully (returns null instead of crashing)
 - [ ] Enable rate limiting in `.env.local`: `ENABLE_RATE_LIMITING=true`
 - [ ] Test rate limiting on `/api/ask` endpoint
 - [ ] Make 61 requests in 1 minute, verify 61st returns 429
@@ -204,12 +211,12 @@ Track progress on converting PR-Agent to production-ready code.
 These must be completed before production:
 1. [ ] Database schema deployed and RLS enabled
 2. [ ] Authentication system tested end-to-end
-3. [ ] All API routes have validation and error handling
-4. [ ] Webhook signature verification implemented
+3. [x] All API routes have validation and error handling
+4. [x] Webhook signature verification implemented
 5. [ ] Environment variables set and validated
 6. [ ] Security keys generated
 7. [ ] In-memory storage replaced with database
-8. [ ] Rate limiting enabled
+8. [ ] Rate limiting implemented (needs env var enabled)
 9. [ ] Audit logging implemented
 10. [ ] Smoke tests pass on staging
 
