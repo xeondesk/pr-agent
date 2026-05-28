@@ -26,7 +26,7 @@ const DEFAULT_CONFIG: PoolConfig = {
 class ConnectionPool {
   private pool: Map<string, PooledConnection[]> = new Map();
   private config: PoolConfig;
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: Partial<PoolConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };

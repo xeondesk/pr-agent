@@ -69,22 +69,24 @@ export function verifyGitHubWebhookSignature(
  * GitHub includes X-GitHub-Delivery header with timestamp
  */
 export function verifyWebhookTimestamp(timestamp: string): WebhookVerificationResult {
-  try {
-    const webhookTime = new Date(timestamp).getTime();
-    const currentTime = Date.now();
-    const timeDiff = Math.abs(currentTime - webhookTime);
+  const parsed = new Date(timestamp);
+  const webhookTime = parsed.getTime();
 
-    if (timeDiff > WEBHOOK_TIMESTAMP_TOLERANCE_MS) {
-      return {
-        valid: false,
-        error: `Webhook timestamp too old (${timeDiff}ms > ${WEBHOOK_TIMESTAMP_TOLERANCE_MS}ms)`,
-      };
-    }
-
-    return { valid: true, timestamp: webhookTime };
-  } catch (error) {
+  if (isNaN(webhookTime)) {
     return { valid: false, error: 'Invalid timestamp format' };
   }
+
+  const currentTime = Date.now();
+  const timeDiff = Math.abs(currentTime - webhookTime);
+
+  if (timeDiff > WEBHOOK_TIMESTAMP_TOLERANCE_MS) {
+    return {
+      valid: false,
+      error: `Webhook timestamp too old (${timeDiff}ms > ${WEBHOOK_TIMESTAMP_TOLERANCE_MS}ms)`,
+    };
+  }
+
+  return { valid: true, timestamp: webhookTime };
 }
 
 /**

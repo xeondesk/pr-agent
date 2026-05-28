@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('Security Tests', () => {
   describe('Authentication Security', () => {
@@ -192,15 +192,30 @@ describe('Security Tests', () => {
     });
 
     it('should hash sensitive data in database', async () => {
-      // This would require database inspection in real tests
-      // Placeholder for password hash verification
-      expect(true).toBe(true);
+      const crypto = await import('crypto');
+      const password = 'test-password-123';
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
+
+      expect(hash).toBeDefined();
+      expect(hash.length).toBe(64);
+      expect(hash).not.toBe(password);
+
+      const sameHash = crypto.createHash('sha256').update(password).digest('hex');
+      expect(hash).toBe(sameHash);
     });
 
     it('should encrypt sensitive fields', async () => {
-      // This would require database inspection in real tests
-      // Placeholder for encryption verification
-      expect(true).toBe(true);
+      const { encryptValue, decryptValue } = await import('@/lib/security');
+      const testData = 'supersecret-credential-12345';
+      const key = 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+
+      const encrypted = encryptValue(testData, key);
+      expect(encrypted).toBeDefined();
+      expect(encrypted).not.toContain(testData);
+      expect(encrypted.split(':').length).toBe(3);
+
+      const decrypted = decryptValue(encrypted, key);
+      expect(decrypted).toBe(testData);
     });
   });
 
